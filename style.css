@@ -1,0 +1,223 @@
+/* ---------------------------------------------------
+   Token system
+   Colore
+     --felt        #173328  sfondo, come il panno del tavolo
+     --felt-deep    #0F241C  pannelli, zone incassate
+     --brass        #C9A24B  accento, come le rifiniture dorate delle carte
+     --brass-dim    #8A7233  brass a bassa intensità (bordi, hover)
+     --ivory        #EDE6D3  testo primario
+     --ivory-dim     #9CAFA4  testo secondario
+     --danger       #B4453B  azioni distruttive (reset)
+   Tipografia
+     display: "Fraunces" - serif con carattere, per titoli ed evocare i frame delle carte
+     body:    "Inter" - leggibile su schermi piccoli
+     mono:    "JetBrains Mono" - per i contatori, tattile come numeri stampati
+--------------------------------------------------- */
+
+:root {
+  --felt: #173328;
+  --felt-deep: #0f241c;
+  --brass: #c9a24b;
+  --brass-dim: #8a7233;
+  --ivory: #ede6d3;
+  --ivory-dim: #9cafa4;
+  --danger: #b4453b;
+  --radius: 14px;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--felt);
+  background-image:
+    radial-gradient(ellipse at top, rgba(201, 162, 75, 0.08), transparent 60%);
+  color: var(--ivory);
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+body { padding-bottom: 3rem; }
+
+.app-header {
+  padding: 1.75rem 1.25rem 1.25rem;
+  text-align: center;
+  border-bottom: 1px solid var(--brass-dim);
+}
+
+.app-header h1 {
+  font-family: 'Fraunces', Georgia, serif;
+  font-weight: 600;
+  font-size: 1.8rem;
+  letter-spacing: 0.01em;
+  margin: 0;
+  color: var(--brass);
+}
+
+.app-header p {
+  margin: 0.35rem 0 0;
+  color: var(--ivory-dim);
+  font-size: 0.9rem;
+}
+
+main {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 1.25rem;
+}
+
+.panel {
+  background: var(--felt-deep);
+  border: 1px solid var(--brass-dim);
+  border-radius: var(--radius);
+  padding: 1.1rem;
+  margin-bottom: 1.25rem;
+}
+
+.panel h2 {
+  font-family: 'Fraunces', Georgia, serif;
+  font-size: 1.05rem;
+  margin: 0 0 0.6rem;
+  color: var(--brass);
+}
+
+textarea, input[type="text"] {
+  width: 100%;
+  background: rgba(0,0,0,0.2);
+  border: 1px solid var(--brass-dim);
+  border-radius: 8px;
+  color: var(--ivory);
+  font-family: inherit;
+  font-size: 0.95rem;
+  padding: 0.65rem;
+  resize: vertical;
+}
+
+textarea:focus, input[type="text"]:focus, button:focus-visible {
+  outline: 2px solid var(--brass);
+  outline-offset: 1px;
+}
+
+.hint {
+  font-size: 0.78rem;
+  color: var(--ivory-dim);
+  margin: 0.4rem 0 0;
+}
+
+.row { display: flex; gap: 0.6rem; flex-wrap: wrap; margin-top: 0.7rem; }
+
+button {
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  font-size: 0.9rem;
+  border-radius: 999px;
+  border: 1px solid var(--brass);
+  background: transparent;
+  color: var(--brass);
+  padding: 0.55rem 1.1rem;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+button.primary { background: var(--brass); color: var(--felt-deep); }
+button.primary:hover { background: #dab660; }
+button:hover { background: rgba(201, 162, 75, 0.12); }
+
+button.ghost { border-color: var(--ivory-dim); color: var(--ivory-dim); }
+button.danger { border-color: var(--danger); color: var(--danger); }
+button.danger:hover { background: rgba(180, 69, 59, 0.15); }
+
+button:disabled { opacity: 0.45; cursor: not-allowed; }
+
+#status {
+  min-height: 1.2em;
+  font-size: 0.85rem;
+  color: var(--ivory-dim);
+  margin-top: 0.5rem;
+}
+
+#status.error { color: #e08a80; }
+
+.token-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 0.9rem;
+}
+
+.token-card {
+  background: var(--felt-deep);
+  border: 1px solid var(--brass-dim);
+  border-radius: var(--radius);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.token-card img {
+  width: 100%;
+  aspect-ratio: 63 / 88;
+  object-fit: cover;
+  background: #0a1712;
+  display: block;
+}
+
+.token-card .info {
+  padding: 0.6rem 0.7rem 0.8rem;
+  text-align: center;
+}
+
+.token-card .name {
+  font-size: 0.82rem;
+  font-weight: 600;
+  line-height: 1.25;
+  min-height: 2.1em;
+}
+
+.counter {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  margin-top: 0.5rem;
+}
+
+.counter button {
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border-radius: 50%;
+  font-size: 1.1rem;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.counter .count {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 1.3rem;
+  min-width: 2ch;
+  text-align: center;
+  color: var(--brass);
+}
+
+.empty-state {
+  text-align: center;
+  color: var(--ivory-dim);
+  padding: 2rem 1rem;
+  font-size: 0.9rem;
+}
+
+footer {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 0 1.25rem;
+  display: flex;
+  justify-content: center;
+  gap: 0.6rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; }
+}
