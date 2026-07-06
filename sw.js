@@ -1,9 +1,11 @@
 // sw.js
-// Cache-first per i file dell'app (l'"app shell"), così l'app si apre anche
-// senza connessione. Le chiamate a Scryfall/Archidekt vanno sempre in rete:
-// non vogliamo servire dati di carte/token da una cache potenzialmente vecchia.
+// Stale-while-revalidate per i file dell'app (l'"app shell"): risponde subito
+// dalla cache (così l'app si apre anche offline) ma aggiorna la cache in
+// background, quindi al reload successivo si è al massimo una versione indietro.
+// Le chiamate a Scryfall/Archidekt vanno sempre in rete: non vogliamo servire
+// dati di carte/token da una cache potenzialmente vecchia.
 
-const CACHE_NAME = 'token-tracker-v2';
+const CACHE_NAME = 'token-tracker-v4';
 const APP_SHELL = [
   './',
   './index.html',
@@ -40,6 +42,15 @@ self.addEventListener('fetch', event => {
   if (url.origin !== self.location.origin) return;
 
   event.respondWith(
-    caches.match(event.request).then(cached => cached || fetch(event.request))
+    caches.open(CACHE_NAME).then(async cache => {
+      const cached = await cache.match(event.request);
+      const refresh = fetch(event.request)
+        .then(res => {
+          if (res.ok) cache.put(event.request, res.clone());
+          return res;
+        })
+        .catch(() => cached);
+      return cached || refresh;
+    })
   );
 });

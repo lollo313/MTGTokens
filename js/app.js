@@ -114,7 +114,18 @@ function renderInPlay() {
   playing.forEach(t => {
     const card = document.createElement('button');
     card.className = 'play-card' + (t.id === selectedId ? ' selected' : '');
-    card.innerHTML = `<span>${t.name}</span>`;
+    card.setAttribute('aria-label', t.name);
+    if (t.image) {
+      // il nome è già stampato sulla carta: basta l'immagine
+      const img = document.createElement('img');
+      img.loading = 'lazy'; img.alt = ''; img.src = t.image;
+      card.appendChild(img);
+    } else {
+      const name = document.createElement('span');
+      name.className = 'play-name';
+      name.textContent = t.name;
+      card.appendChild(name);
+    }
     const badge = document.createElement('span');
     badge.className = 'play-badge';
     badge.textContent = Storage.total(t.id);
@@ -137,6 +148,7 @@ function renderCenter() {
   els.centerCard.hidden = false;
   els.tapCol.hidden = false;
   els.centerName.textContent = t.name;
+  els.centerName.hidden = Boolean(t.image); // il nome è già stampato sulla carta
   els.centerTotal.textContent = e.untapped + e.tapped;
   els.numUntapped.textContent = e.untapped;
   els.numTapped.textContent = e.tapped;

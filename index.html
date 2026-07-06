@@ -62,30 +62,28 @@
       <button id="btn-add" class="add-btn" aria-label="Aggiungi token">+</button>
     </div>
 
-    <!-- Centro: token selezionato + contatore totale -->
+    <!-- Centro: carta selezionata con contatore + mini-carte stappati/tappati -->
     <div class="board-center">
       <div id="center-empty" class="center-empty">Aggiungi un token con il +</div>
       <div id="center-card" class="center-card" hidden>
-        <img id="center-img" alt="">
-        <div id="center-name" class="center-name"></div>
-        <div class="counter-row">
-          <button id="btn-minus" aria-label="Diminuisci totale">−</button>
-          <span id="center-total" class="center-total">0</span>
-          <button id="btn-plus" aria-label="Aumenta totale">+</button>
+        <div class="center-face">
+          <img id="center-img" alt="">
+          <div id="center-name" class="center-name"></div>
+          <div class="counter-row">
+            <button id="btn-minus" aria-label="Diminuisci totale">−</button>
+            <span id="center-total" class="center-total">0</span>
+            <button id="btn-plus" aria-label="Aumenta totale">+</button>
+          </div>
+        </div>
+        <div id="tap-col" class="tap-col" hidden>
+          <button id="cell-untapped" class="tap-cell untapped" aria-label="Token stappati: tocca per tapparne uno">
+            <span id="num-untapped" class="tap-num">0</span>
+          </button>
+          <button id="cell-tapped" class="tap-cell tapped" aria-label="Token tappati: tocca per stapparne uno">
+            <span id="num-tapped" class="tap-num">0</span>
+          </button>
         </div>
       </div>
-    </div>
-
-    <!-- Destra: stappati / tappati -->
-    <div id="tap-col" class="board-right" hidden>
-      <button id="cell-untapped" class="tap-cell untapped">
-        <span class="tap-label">stappati</span>
-        <span id="num-untapped" class="tap-num">0</span>
-      </button>
-      <button id="cell-tapped" class="tap-cell tapped">
-        <span class="tap-label">tappati</span>
-        <span id="num-tapped" class="tap-num">0</span>
-      </button>
     </div>
   </div>
 
