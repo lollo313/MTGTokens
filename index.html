@@ -85,6 +85,13 @@
         </div>
       </div>
     </div>
+
+    <!-- Colonna destra: segnalini del token selezionato -->
+    <div id="counter-col" class="board-right" hidden>
+      <div id="counter-list" class="counter-list"></div>
+      <p id="counter-empty" class="counter-empty" hidden>Nessun segnalino</p>
+      <button id="btn-add-counter" class="add-counter-btn" aria-label="Aggiungi segnalino">+</button>
+    </div>
   </div>
 
   <!-- Overlay ricerca (Frame 2) -->
@@ -105,6 +112,26 @@
         <button id="rm-tapped">Uno tappato</button>
       </div>
       <button id="rm-cancel" class="modal-cancel">Annulla</button>
+    </div>
+  </div>
+
+  <!-- Modale scelta segnalino -->
+  <div id="counter-modal" class="modal" hidden>
+    <div class="modal-box">
+      <div class="modal-title">Segnalino per <span id="counter-modal-token"></span></div>
+      <div id="counter-presets" class="counter-presets">
+        <button data-counter="+1/+1">+1/+1</button>
+        <button data-counter="−1/−1">−1/−1</button>
+        <button data-counter="Carica">Carica</button>
+        <button data-counter="Stordimento">Stordimento</button>
+        <button data-counter="Scudo">Scudo</button>
+        <button data-counter="Volare">Volare</button>
+      </div>
+      <div class="row">
+        <input type="text" id="counter-custom" placeholder="Altro tipo…" autocomplete="off">
+        <button id="counter-custom-add">Aggiungi</button>
+      </div>
+      <button id="counter-cancel" class="modal-cancel">Annulla</button>
     </div>
   </div>
 

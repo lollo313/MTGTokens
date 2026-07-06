@@ -28,9 +28,9 @@
 
 :root {
     /* superfici */
-    --bg: #173328;
-    --surface: #0f241c;
-    --surface-card: #12271e;
+    --bg: #eae8e4;
+    --surface: #e8d1af;
+    --surface-card: #edb97b;
     --surface-selected: #1f3d30;
     --surface-tapped: #3a3320;
     --surface-sunken: #0a1712;
@@ -522,6 +522,137 @@ button.ghost {
 .tap-num {
     font-family: 'JetBrains Mono', monospace;
     font-size: 1.5rem;
+}
+
+/* --- colonna destra: segnalini del token selezionato --- */
+.board-right {
+    position: relative;
+    width: clamp(150px, 20%, 220px);
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    border-left: 1px solid var(--divider);
+    padding-left: 12px;
+}
+
+.counter-list {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    /* respiro per il bottone menu in alto e per il + flottante in basso */
+    padding: 78px 0 78px;
+}
+
+.counter-empty {
+    position: absolute;
+    top: 50%;
+    left: 12px;
+    right: 0;
+    transform: translateY(-50%);
+    margin: 0;
+    text-align: center;
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+}
+
+.counter-item {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-shrink: 0;
+    background: var(--surface-card);
+    border: 1px solid var(--surface-selected);
+    border-radius: var(--radius-card-sm);
+    padding: 8px 10px;
+}
+
+.counter-name {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    text-align: left;
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+}
+
+.counter-qty {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 1rem;
+    color: var(--accent);
+    min-width: 2ch;
+    text-align: center;
+}
+
+.counter-step {
+    width: 28px;
+    height: 28px;
+    flex-shrink: 0;
+    border: none;
+    background: none;
+    color: var(--text-primary);
+    font-size: 18px;
+    line-height: 1;
+    padding: 0;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.counter-step:not(:disabled):hover {
+    background: var(--accent-soft);
+}
+
+.counter-step:not(:disabled):active {
+    transform: scale(0.9);
+    transition-duration: 0.1s;
+}
+
+.add-counter-btn {
+    position: absolute;
+    right: 0;
+    bottom: 12px;
+    z-index: 2;
+    width: 54px;
+    height: 54px;
+    border-radius: 50%;
+    border: 1px solid var(--accent);
+    background: var(--surface);
+    color: var(--accent);
+    font-size: 30px;
+    font-weight: 300;
+    line-height: 1;
+    padding: 0;
+    box-shadow: var(--shadow-raised);
+}
+
+.add-counter-btn:not(:disabled):active {
+    transform: scale(0.9);
+    transition-duration: 0.1s;
+}
+
+/* modale scelta segnalino */
+.counter-presets {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: center;
+    margin-bottom: 4px;
+}
+
+.counter-presets button {
+    font-size: 0.8rem;
+    padding: 0.45rem 0.9rem;
+}
+
+#counter-modal .row input {
+    flex: 1;
+    width: auto;
+    min-width: 0;
 }
 
 /* --- overlay ricerca --- */

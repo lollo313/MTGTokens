@@ -80,6 +80,7 @@ const Storage = {
     const state = this._loadState();
     const e = this._entry(state, tokenId);
     if (e.untapped > 0) e.untapped--;
+    if (e.untapped + e.tapped === 0) delete e.counters; // il token lascia il gioco, i segnalini spariscono
     this._saveState(state);
     return this.getEntry(tokenId);
   },
@@ -89,8 +90,28 @@ const Storage = {
     const state = this._loadState();
     const e = this._entry(state, tokenId);
     if (e.tapped > 0) e.tapped--;
+    if (e.untapped + e.tapped === 0) delete e.counters;
     this._saveState(state);
     return this.getEntry(tokenId);
+  },
+
+  // --- segnalini: mappa { tipo: quantità } per singolo token ---
+  getCounters(tokenId) {
+    const e = this._entry(this._loadState(), tokenId);
+    return { ...(e.counters || {}) };
+  },
+
+  // delta positivo o negativo; a quota 0 il tipo sparisce dalla mappa.
+  changeCounter(tokenId, name, delta) {
+    const state = this._loadState();
+    const e = this._entry(state, tokenId);
+    if (!e.counters) e.counters = {};
+    const next = (e.counters[name] || 0) + delta;
+    if (next <= 0) delete e.counters[name];
+    else e.counters[name] = next;
+    if (Object.keys(e.counters).length === 0) delete e.counters;
+    this._saveState(state);
+    return this.getCounters(tokenId);
   },
 
   // Tappa un'unità: stappati -> tappati.

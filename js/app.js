@@ -31,6 +31,17 @@ const els = {
   searchInput: document.getElementById('search-input'),
   searchGrid: document.getElementById('search-grid'),
   searchClose: document.getElementById('search-close'),
+  // segnalini
+  counterCol: document.getElementById('counter-col'),
+  counterList: document.getElementById('counter-list'),
+  counterEmpty: document.getElementById('counter-empty'),
+  btnAddCounter: document.getElementById('btn-add-counter'),
+  counterModal: document.getElementById('counter-modal'),
+  counterModalToken: document.getElementById('counter-modal-token'),
+  counterPresets: document.getElementById('counter-presets'),
+  counterCustom: document.getElementById('counter-custom'),
+  counterCustomAdd: document.getElementById('counter-custom-add'),
+  counterCancel: document.getElementById('counter-cancel'),
   // modali
   removeModal: document.getElementById('remove-modal'),
   rmUntapped: document.getElementById('rm-untapped'),
@@ -137,6 +148,7 @@ function renderInPlay() {
 
 function renderCenter() {
   const t = selectedId ? tokenById(selectedId) : null;
+  renderCounters(t);
   if (!t) {
     els.centerCard.hidden = true;
     els.centerEmpty.hidden = false;
@@ -183,6 +195,77 @@ els.rmTapped.addEventListener('click', () => {
   Storage.removeTapped(selectedId); els.removeModal.hidden = true; renderInPlay(); renderCenter();
 });
 els.rmCancel.addEventListener('click', () => { els.removeModal.hidden = true; });
+
+// --- segnalini del token selezionato ---
+function renderCounters(t) {
+  els.counterCol.hidden = !t;
+  if (!t) return;
+  const counters = Storage.getCounters(t.id);
+  const names = Object.keys(counters).sort((a, b) => a.localeCompare(b));
+  els.counterEmpty.hidden = names.length > 0;
+  els.counterList.innerHTML = '';
+  names.forEach(name => {
+    const item = document.createElement('div');
+    item.className = 'counter-item';
+
+    const label = document.createElement('span');
+    label.className = 'counter-name';
+    label.textContent = name;
+    label.title = name;
+
+    const minus = document.createElement('button');
+    minus.className = 'counter-step';
+    minus.textContent = '−';
+    minus.setAttribute('aria-label', `Togli un segnalino ${name}`);
+    minus.addEventListener('click', () => {
+      Storage.changeCounter(t.id, name, -1);
+      renderCounters(t);
+    });
+
+    const qty = document.createElement('span');
+    qty.className = 'counter-qty';
+    qty.textContent = counters[name];
+
+    const plus = document.createElement('button');
+    plus.className = 'counter-step';
+    plus.textContent = '+';
+    plus.setAttribute('aria-label', `Aggiungi un segnalino ${name}`);
+    plus.addEventListener('click', () => {
+      Storage.changeCounter(t.id, name, 1);
+      renderCounters(t);
+    });
+
+    item.append(label, minus, qty, plus);
+    els.counterList.appendChild(item);
+  });
+}
+
+function openCounterModal() {
+  const t = selectedId ? tokenById(selectedId) : null;
+  if (!t) return;
+  els.counterModalToken.textContent = t.name;
+  els.counterCustom.value = '';
+  els.counterModal.hidden = false;
+}
+
+function addCounterAndClose(name) {
+  const trimmed = name.trim();
+  if (!trimmed || !selectedId) return;
+  Storage.changeCounter(selectedId, trimmed, 1);
+  els.counterModal.hidden = true;
+  renderCounters(tokenById(selectedId));
+}
+
+els.btnAddCounter.addEventListener('click', openCounterModal);
+els.counterPresets.addEventListener('click', e => {
+  const btn = e.target.closest('[data-counter]');
+  if (btn) addCounterAndClose(btn.dataset.counter);
+});
+els.counterCustomAdd.addEventListener('click', () => addCounterAndClose(els.counterCustom.value));
+els.counterCustom.addEventListener('keydown', e => {
+  if (e.key === 'Enter') addCounterAndClose(els.counterCustom.value);
+});
+els.counterCancel.addEventListener('click', () => { els.counterModal.hidden = true; });
 
 // --- tap / untap ---
 els.cellUntapped.addEventListener('click', () => {
