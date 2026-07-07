@@ -11,6 +11,7 @@
        --golden-orange     selezione multipla e focus (variabile Figma "Golden Orange")
        --divider           linee di separazione su fondo scuro
        --border-soft       bordi tenui su fondo scuro
+       --hover-ring        anello bianco in opacità sull'hover delle carte
        --error             messaggi di errore
      geometrie
        --radius-card / -mini / -slot / -field / -sheet / -box
@@ -34,6 +35,7 @@
     --pacific-blue: #5eb1bf;
     --divider: rgba(226, 226, 226, 0.2);
     --border-soft: rgba(226, 226, 226, 0.35);
+    --hover-ring: rgba(255, 255, 255, 0.4);
     --error: #e08a80;
     --num-text: #000000;
 
@@ -630,7 +632,8 @@ summary {
     align-content: start;
     column-gap: clamp(20px, 17%, 56px);
     row-gap: 10px;
-    padding: 0 28px;
+    /* tolleranza verticale: traslazione hover e badge non vengono tagliati */
+    padding: 4px 28px 8px;
     scrollbar-width: none;
 }
 
@@ -654,10 +657,16 @@ summary {
     border-radius: var(--radius-mini);
     overflow: hidden;
     background: var(--text-inverted);
+    transition: box-shadow 0.2s ease;
 }
 
 .mini:not(:disabled):hover {
     transform: translateY(-2px);
+}
+
+.mini:not(.selected):not(:disabled):hover .mini-face,
+.mini:not(.selected):not(:disabled):hover .mini-rot {
+    box-shadow: 0 0 0 1px var(--hover-ring);
 }
 
 .mini img {
@@ -692,6 +701,7 @@ summary {
     border-radius: var(--radius-mini);
     overflow: hidden;
     background: var(--text-inverted);
+    transition: box-shadow 0.2s ease;
 }
 
 /* selezione multipla: anello esterno, niente bordo che scopre lo sfondo chiaro */
@@ -840,6 +850,8 @@ summary {
     gap: 12px;
     overflow-x: auto;
     overflow-y: hidden;
+    /* tolleranza per la traslazione hover delle carte */
+    padding-block: 4px;
     scrollbar-width: none;
 }
 
@@ -862,6 +874,7 @@ summary {
 
 .search-card:not(:disabled):hover {
     transform: translateY(-2px);
+    box-shadow: 0 0 0 1px var(--hover-ring);
 }
 
 .search-card img {
