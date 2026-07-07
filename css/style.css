@@ -378,15 +378,17 @@ summary {
     width: 100%;
     aspect-ratio: var(--card-ratio);
     border-radius: var(--radius-card);
-    border: 1px solid transparent;
     overflow: hidden;
     background: var(--text-inverted);
     box-shadow: var(--shadow-row);
     color: var(--text);
+    transition: box-shadow 0.2s ease;
 }
 
+/* niente bordo trasparente: con l'immagine incassata (inset:0) lascerebbe
+   scoperto il background chiaro sottostante, disegnando un anello bianco */
 .play-card.selected .play-face {
-    border-color: var(--text);
+    box-shadow: 0 0 0 2px var(--golden-orange), var(--shadow-row);
 }
 
 .play-face img {
