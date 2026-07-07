@@ -453,8 +453,15 @@ els.btnArchidekt.addEventListener('click', () => {
 })();
 
 // --- service worker ---
+// In locale niente cache offline: servirebbe sempre la versione precedente
+// e nasconderebbe le modifiche durante lo sviluppo.
 if ('serviceWorker' in navigator) {
+  const isDev = ['localhost', '127.0.0.1'].includes(location.hostname);
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('sw.js').catch(err => console.warn('SW non registrato:', err));
+    if (isDev) {
+      navigator.serviceWorker.getRegistrations().then(rs => rs.forEach(r => r.unregister()));
+    } else {
+      navigator.serviceWorker.register('sw.js').catch(err => console.warn('SW non registrato:', err));
+    }
   });
 }
