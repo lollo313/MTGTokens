@@ -1,13 +1,17 @@
 // storage.js
 // Piccolo wrapper su localStorage. Tutto lo stato vive sul dispositivo:
 // nessun server, nessun account, nessuna sincronizzazione.
+//
+// Modello dati: ogni token in gioco è una lista di ISTANZE individuali.
+//   { tokenId: { instances: [ { tapped: bool, p: int, t: int } ] } }
+// p/t è il modificatore forza/costituzione dell'istanza (0/0 = nessun segnalino).
 
 const Storage = {
   KEYS: {
     DECK_HASH: 'tt_deck_hash',
     DECK_CARDS: 'tt_deck_cards',   // nomi carta del mazzo attivo
     TOKENS: 'tt_tokens',           // token risolti (id, nome, immagine) per il mazzo attivo
-    STATE: 'tt_state'              // stato di gioco { tokenId: {untapped, tapped} }
+    STATE: 'tt_state'              // stato di gioco { tokenId: { instances: [...] } }
   },
 
   // hash semplice e stabile della decklist, per capire se è "lo stesso mazzo"
@@ -26,10 +30,8 @@ const Storage = {
     localStorage.setItem(this.KEYS.DECK_HASH, hash);
     localStorage.setItem(this.KEYS.DECK_CARDS, JSON.stringify(cardNames));
     localStorage.setItem(this.KEYS.TOKENS, JSON.stringify(tokens));
-    // Stato iniziale: nessun token in gioco (tutti a 0/0).
-    const state = {};
-    tokens.forEach(t => { state[t.id] = { untapped: 0, tapped: 0 }; });
-    localStorage.setItem(this.KEYS.STATE, JSON.stringify(state));
+    // Stato iniziale: nessun token in gioco.
+    localStorage.setItem(this.KEYS.STATE, JSON.stringify({}));
     return hash;
   },
 
@@ -41,12 +43,28 @@ const Storage = {
       hash: localStorage.getItem(this.KEYS.DECK_HASH),
       cardNames: JSON.parse(cardsRaw),
       tokens: JSON.parse(tokensRaw),
-      state: JSON.parse(localStorage.getItem(this.KEYS.STATE) || '{}')
+      state: this._loadState()
     };
   },
 
   _loadState() {
-    return JSON.parse(localStorage.getItem(this.KEYS.STATE) || '{}');
+    const state = JSON.parse(localStorage.getItem(this.KEYS.STATE) || '{}');
+    // Migrazione dal vecchio formato { untapped, tapped, counters }:
+    // i conteggi diventano istanze, i segnalini nominali non sono mappabili
+    // su forza/costituzione e decadono.
+    let migrated = false;
+    for (const id of Object.keys(state)) {
+      const e = state[id];
+      if (e && !Array.isArray(e.instances) && (typeof e.untapped === 'number' || typeof e.tapped === 'number')) {
+        const instances = [];
+        for (let i = 0; i < (e.untapped || 0); i++) instances.push({ tapped: false, p: 0, t: 0 });
+        for (let i = 0; i < (e.tapped || 0); i++) instances.push({ tapped: true, p: 0, t: 0 });
+        state[id] = { instances };
+        migrated = true;
+      }
+    }
+    if (migrated) this._saveState(state);
+    return state;
   },
 
   _saveState(state) {
@@ -54,92 +72,67 @@ const Storage = {
   },
 
   _entry(state, tokenId) {
-    if (!state[tokenId]) state[tokenId] = { untapped: 0, tapped: 0 };
+    if (!state[tokenId] || !Array.isArray(state[tokenId].instances)) {
+      state[tokenId] = { instances: [] };
+    }
     return state[tokenId];
   },
 
   total(tokenId) {
-    const e = this._entry(this._loadState(), tokenId);
-    return e.untapped + e.tapped;
+    return this._entry(this._loadState(), tokenId).instances.length;
   },
 
-  getEntry(tokenId) {
-    return { ...this._entry(this._loadState(), tokenId) };
+  getInstances(tokenId) {
+    return this._entry(this._loadState(), tokenId).instances.map(i => ({ ...i }));
   },
 
-  // Aggiunge un token in gioco: entra stappato.
+  // Aggiunge un'istanza: entra stappata e senza segnalini.
   addOne(tokenId) {
     const state = this._loadState();
-    this._entry(state, tokenId).untapped++;
+    this._entry(state, tokenId).instances.push({ tapped: false, p: 0, t: 0 });
     this._saveState(state);
-    return this.getEntry(tokenId);
   },
 
-  // Rimuove esplicitamente un'unità stappata.
-  removeUntapped(tokenId) {
+  // Rimuove le istanze agli indici dati (0-based).
+  removeAt(tokenId, indices) {
     const state = this._loadState();
     const e = this._entry(state, tokenId);
-    if (e.untapped > 0) e.untapped--;
-    if (e.untapped + e.tapped === 0) delete e.counters; // il token lascia il gioco, i segnalini spariscono
+    const drop = new Set(indices);
+    e.instances = e.instances.filter((_, i) => !drop.has(i));
+    if (e.instances.length === 0) delete state[tokenId];
     this._saveState(state);
-    return this.getEntry(tokenId);
   },
 
-  // Rimuove esplicitamente un'unità tappata.
-  removeTapped(tokenId) {
+  // Tappa/stappa la singola istanza.
+  toggleTap(tokenId, index) {
+    const state = this._loadState();
+    const inst = this._entry(state, tokenId).instances[index];
+    if (inst) inst.tapped = !inst.tapped;
+    this._saveState(state);
+  },
+
+  // Applica un modificatore p/t alle istanze indicate.
+  // replace=false somma al modificatore esistente, replace=true lo sostituisce.
+  applyCounter(tokenId, indices, dp, dt, replace = false) {
     const state = this._loadState();
     const e = this._entry(state, tokenId);
-    if (e.tapped > 0) e.tapped--;
-    if (e.untapped + e.tapped === 0) delete e.counters;
+    for (const i of indices) {
+      const inst = e.instances[i];
+      if (!inst) continue;
+      inst.p = replace ? dp : (inst.p || 0) + dp;
+      inst.t = replace ? dt : (inst.t || 0) + dt;
+    }
     this._saveState(state);
-    return this.getEntry(tokenId);
   },
 
-  // --- segnalini: mappa { tipo: quantità } per singolo token ---
-  getCounters(tokenId) {
-    const e = this._entry(this._loadState(), tokenId);
-    return { ...(e.counters || {}) };
+  // Azzera i segnalini delle istanze indicate.
+  clearCounters(tokenId, indices) {
+    this.applyCounter(tokenId, indices, 0, 0, true);
   },
 
-  // delta positivo o negativo; a quota 0 il tipo sparisce dalla mappa.
-  changeCounter(tokenId, name, delta) {
-    const state = this._loadState();
-    const e = this._entry(state, tokenId);
-    if (!e.counters) e.counters = {};
-    const next = (e.counters[name] || 0) + delta;
-    if (next <= 0) delete e.counters[name];
-    else e.counters[name] = next;
-    if (Object.keys(e.counters).length === 0) delete e.counters;
-    this._saveState(state);
-    return this.getCounters(tokenId);
-  },
-
-  // Tappa un'unità: stappati -> tappati.
-  tapOne(tokenId) {
-    const state = this._loadState();
-    const e = this._entry(state, tokenId);
-    if (e.untapped > 0) { e.untapped--; e.tapped++; }
-    this._saveState(state);
-    return this.getEntry(tokenId);
-  },
-
-  // Stappa un'unità: tappati -> stappati.
-  untapOne(tokenId) {
-    const state = this._loadState();
-    const e = this._entry(state, tokenId);
-    if (e.tapped > 0) { e.tapped--; e.untapped++; }
-    this._saveState(state);
-    return this.getEntry(tokenId);
-  },
-
-  // Azzera i contatori mantenendo il mazzo (nuova partita).
+  // Azzera lo stato mantenendo il mazzo (nuova partita).
   resetState() {
-    const tokensRaw = localStorage.getItem(this.KEYS.TOKENS);
-    if (!tokensRaw) return;
-    const tokens = JSON.parse(tokensRaw);
-    const state = {};
-    tokens.forEach(t => { state[t.id] = { untapped: 0, tapped: 0 }; });
-    this._saveState(state);
+    this._saveState({});
   },
 
   clearDeck() {

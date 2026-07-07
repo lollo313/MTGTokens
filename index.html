@@ -6,13 +6,13 @@
 <title>Token Tracker MTG</title>
 <meta name="description" content="Traccia i token generati durante le tue partite di Magic: The Gathering">
 <link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#173328">
+<meta name="theme-color" content="#0a0d11">
 <link rel="apple-touch-icon" href="icons/icon-192.png">
 <link rel="icon" href="icons/icon-192.png">
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
 <link rel="stylesheet" href="css/style.css">
 </head>
@@ -56,83 +56,71 @@
   </button>
 
   <div class="board">
-    <!-- Colonna sinistra: token in gioco -->
+    <!-- Colonna sinistra: pila dei token in gioco -->
     <div class="board-left">
-      <div id="in-play-list" class="in-play-list"></div>
+      <div id="stack" class="stack"></div>
       <button id="btn-add" class="add-btn" aria-label="Aggiungi token">+</button>
     </div>
 
-    <!-- Centro: carta selezionata con contatore + mini-carte stappati/tappati -->
-    <div class="board-center">
+    <!-- Area principale: carta selezionata + tray delle istanze -->
+    <div class="board-main">
       <div id="center-empty" class="center-empty">Aggiungi un token con il +</div>
+
       <div id="center-card" class="center-card" hidden>
-        <div class="center-face">
-          <img id="center-img" alt="">
-          <div id="center-name" class="center-name"></div>
-          <div class="counter-row">
-            <button id="btn-minus" aria-label="Diminuisci totale">−</button>
-            <span id="center-total" class="center-total">0</span>
-            <button id="btn-plus" aria-label="Aumenta totale">+</button>
+        <img id="center-img" alt="">
+        <div id="center-name" class="center-name"></div>
+        <span id="center-count" class="center-count">0</span>
+      </div>
+
+      <aside id="tray" class="tray" hidden>
+        <div id="tray-header-normal" class="tray-header">
+          <div class="tray-header-left">
+            <button id="btn-add-counter" class="pill"><span>+ Add counter</span></button>
+            <button id="btn-clear-counters" class="pill" hidden aria-label="Rimuovi segnalini"><span>− Remove</span></button>
+          </div>
+          <div class="tray-steppers">
+            <button id="btn-inst-plus" class="round" aria-label="Aggiungi un'istanza">+</button>
+            <button id="btn-inst-minus" class="round" aria-label="Rimuovi un'istanza">−</button>
           </div>
         </div>
-        <div id="tap-col" class="tap-col" hidden>
-          <button id="cell-untapped" class="tap-cell untapped" aria-label="Token stappati: tocca per tapparne uno">
-            <span id="num-untapped" class="tap-num">0</span>
-          </button>
-          <button id="cell-tapped" class="tap-cell tapped" aria-label="Token tappati: tocca per stapparne uno">
-            <span id="num-tapped" class="tap-num">0</span>
-          </button>
+        <div id="tray-header-select" class="tray-header" hidden>
+          <span class="select-label">Select one or more tokens</span>
+          <button id="btn-select-done" class="pill pill-light">Done</button>
         </div>
-      </div>
-    </div>
-
-    <!-- Colonna destra: segnalini del token selezionato -->
-    <div id="counter-col" class="board-right" hidden>
-      <div id="counter-list" class="counter-list"></div>
-      <p id="counter-empty" class="counter-empty" hidden>Nessun segnalino</p>
-      <button id="btn-add-counter" class="add-counter-btn" aria-label="Aggiungi segnalino">+</button>
+        <div id="tray-grid" class="tray-grid"></div>
+      </aside>
     </div>
   </div>
 
-  <!-- Overlay ricerca (Frame 2) -->
+  <!-- Scrim modalità selezione: il tray resta in chiaro sopra -->
+  <div id="board-scrim" class="board-scrim" hidden></div>
+
+  <!-- Editor segnalini forza/costituzione -->
+  <div id="counter-editor" class="editor-overlay" hidden>
+    <div class="editor-box">
+      <div class="editor-row">
+        <div class="editor-stepper">
+          <button id="pw-plus" aria-label="Aumenta forza">+</button>
+          <button id="pw-minus" aria-label="Diminuisci forza">−</button>
+        </div>
+        <div id="pw-num" class="editor-num">+0</div>
+        <span class="editor-slash">/</span>
+        <div id="tg-num" class="editor-num">+0</div>
+        <div class="editor-stepper">
+          <button id="tg-plus" aria-label="Aumenta costituzione">+</button>
+          <button id="tg-minus" aria-label="Diminuisci costituzione">−</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Overlay ricerca -->
   <div id="search-overlay" class="search-overlay" hidden>
     <div class="search-panel">
       <input type="text" id="search-input" placeholder="Cerca" autocomplete="off">
       <div id="search-grid" class="search-grid"></div>
     </div>
-    <button id="search-close" class="search-close" aria-label="Chiudi">Chiudi</button>
-  </div>
-
-  <!-- Modale rimozione (- ambiguo) -->
-  <div id="remove-modal" class="modal" hidden>
-    <div class="modal-box">
-      <div class="modal-title">Quale token vuoi rimuovere?</div>
-      <div class="row">
-        <button id="rm-untapped">Uno stappato</button>
-        <button id="rm-tapped">Uno tappato</button>
-      </div>
-      <button id="rm-cancel" class="modal-cancel">Annulla</button>
-    </div>
-  </div>
-
-  <!-- Modale scelta segnalino -->
-  <div id="counter-modal" class="modal" hidden>
-    <div class="modal-box">
-      <div class="modal-title">Segnalino per <span id="counter-modal-token"></span></div>
-      <div id="counter-presets" class="counter-presets">
-        <button data-counter="+1/+1">+1/+1</button>
-        <button data-counter="−1/−1">−1/−1</button>
-        <button data-counter="Carica">Carica</button>
-        <button data-counter="Stordimento">Stordimento</button>
-        <button data-counter="Scudo">Scudo</button>
-        <button data-counter="Volare">Volare</button>
-      </div>
-      <div class="row">
-        <input type="text" id="counter-custom" placeholder="Altro tipo…" autocomplete="off">
-        <button id="counter-custom-add">Aggiungi</button>
-      </div>
-      <button id="counter-cancel" class="modal-cancel">Annulla</button>
-    </div>
+    <button id="search-close" class="search-close" aria-label="Chiudi">✕</button>
   </div>
 
   <!-- Menu -->

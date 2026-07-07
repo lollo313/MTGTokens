@@ -12,41 +12,38 @@ const els = {
   importView: document.getElementById('import-view'),
   // board
   boardView: document.getElementById('board-view'),
-  inPlayList: document.getElementById('in-play-list'),
+  stack: document.getElementById('stack'),
   btnAdd: document.getElementById('btn-add'),
   centerEmpty: document.getElementById('center-empty'),
   centerCard: document.getElementById('center-card'),
   centerImg: document.getElementById('center-img'),
   centerName: document.getElementById('center-name'),
-  centerTotal: document.getElementById('center-total'),
-  btnMinus: document.getElementById('btn-minus'),
-  btnPlus: document.getElementById('btn-plus'),
-  tapCol: document.getElementById('tap-col'),
-  cellUntapped: document.getElementById('cell-untapped'),
-  cellTapped: document.getElementById('cell-tapped'),
-  numUntapped: document.getElementById('num-untapped'),
-  numTapped: document.getElementById('num-tapped'),
+  centerCount: document.getElementById('center-count'),
+  // tray
+  tray: document.getElementById('tray'),
+  trayGrid: document.getElementById('tray-grid'),
+  trayHeaderNormal: document.getElementById('tray-header-normal'),
+  trayHeaderSelect: document.getElementById('tray-header-select'),
+  btnAddCounter: document.getElementById('btn-add-counter'),
+  btnClearCounters: document.getElementById('btn-clear-counters'),
+  btnInstPlus: document.getElementById('btn-inst-plus'),
+  btnInstMinus: document.getElementById('btn-inst-minus'),
+  btnSelectDone: document.getElementById('btn-select-done'),
+  boardScrim: document.getElementById('board-scrim'),
+  // editor segnalini
+  counterEditor: document.getElementById('counter-editor'),
+  pwNum: document.getElementById('pw-num'),
+  tgNum: document.getElementById('tg-num'),
+  pwPlus: document.getElementById('pw-plus'),
+  pwMinus: document.getElementById('pw-minus'),
+  tgPlus: document.getElementById('tg-plus'),
+  tgMinus: document.getElementById('tg-minus'),
   // overlay ricerca
   searchOverlay: document.getElementById('search-overlay'),
   searchInput: document.getElementById('search-input'),
   searchGrid: document.getElementById('search-grid'),
   searchClose: document.getElementById('search-close'),
-  // segnalini
-  counterCol: document.getElementById('counter-col'),
-  counterList: document.getElementById('counter-list'),
-  counterEmpty: document.getElementById('counter-empty'),
-  btnAddCounter: document.getElementById('btn-add-counter'),
-  counterModal: document.getElementById('counter-modal'),
-  counterModalToken: document.getElementById('counter-modal-token'),
-  counterPresets: document.getElementById('counter-presets'),
-  counterCustom: document.getElementById('counter-custom'),
-  counterCustomAdd: document.getElementById('counter-custom-add'),
-  counterCancel: document.getElementById('counter-cancel'),
-  // modali
-  removeModal: document.getElementById('remove-modal'),
-  rmUntapped: document.getElementById('rm-untapped'),
-  rmTapped: document.getElementById('rm-tapped'),
-  rmCancel: document.getElementById('rm-cancel'),
+  // menu
   btnMenu: document.getElementById('btn-menu'),
   menuSheet: document.getElementById('menu-sheet'),
   menuNewGame: document.getElementById('menu-new-game'),
@@ -54,8 +51,16 @@ const els = {
   menuClose: document.getElementById('menu-close')
 };
 
-let allTokens = [];   // tutti i token risolti dal mazzo
+let allTokens = [];    // tutti i token risolti dal mazzo
 let selectedId = null; // token attualmente al centro
+
+// Modalità selezione multipla sul tray:
+// null | 'counter' (applica segnalino) | 'remove' (rimuovi istanze) | 'clear' (togli segnalini)
+let selectMode = null;
+let selectedInstances = new Set();
+
+// Editor forza/costituzione: { dp, dt, targets: [indici], replace: bool } | null
+let editor = null;
 
 function setStatus(message, isError = false) {
   els.status.textContent = message;
@@ -105,176 +110,251 @@ function enterBoard(tokens) {
   document.body.classList.add('board-active');
   els.boardView.hidden = false;
   selectedId = null;
-  renderInPlay();
-  renderCenter();
+  renderBoard();
 }
 
 function tokenById(id) { return allTokens.find(t => t.id === id); }
 
-// token attualmente in gioco (totale > 0)
+// token attualmente in gioco (almeno un'istanza)
 function inPlayTokens() {
   return allTokens.filter(t => Storage.total(t.id) > 0);
 }
 
-function renderInPlay() {
-  els.inPlayList.innerHTML = '';
+function fmtMod(n) { return (n >= 0 ? '+' : '') + n; }
+
+function renderBoard() {
+  renderStack();
+  renderCenter();
+  renderTray();
+}
+
+// --- colonna sinistra: pila delle fasce titolo ---
+function renderStack() {
+  els.stack.innerHTML = '';
   const playing = inPlayTokens();
-  if (selectedId && !playing.some(t => t.id === selectedId)) {
+  if (!playing.some(t => t.id === selectedId)) {
     selectedId = playing.length ? playing[0].id : null;
   }
   playing.forEach(t => {
     const card = document.createElement('button');
     card.className = 'play-card' + (t.id === selectedId ? ' selected' : '');
     card.setAttribute('aria-label', t.name);
+
+    const face = document.createElement('span');
+    face.className = 'play-face';
     if (t.image) {
-      // il nome è già stampato sulla carta: basta l'immagine
+      // il nome è già stampato sulla fascia titolo della carta
       const img = document.createElement('img');
       img.loading = 'lazy'; img.alt = ''; img.src = t.image;
-      card.appendChild(img);
+      face.appendChild(img);
     } else {
       const name = document.createElement('span');
       name.className = 'play-name';
       name.textContent = t.name;
-      card.appendChild(name);
+      face.appendChild(name);
     }
+    card.appendChild(face);
+
     const badge = document.createElement('span');
     badge.className = 'play-badge';
     badge.textContent = Storage.total(t.id);
     card.appendChild(badge);
-    card.addEventListener('click', () => { selectedId = t.id; renderInPlay(); renderCenter(); });
-    els.inPlayList.appendChild(card);
+
+    card.addEventListener('click', () => {
+      if (selectMode) return; // durante la selezione la pila è sotto lo scrim
+      selectedId = t.id;
+      renderBoard();
+    });
+    els.stack.appendChild(card);
   });
 }
 
+// --- carta selezionata al centro ---
 function renderCenter() {
   const t = selectedId ? tokenById(selectedId) : null;
-  renderCounters(t);
   if (!t) {
     els.centerCard.hidden = true;
     els.centerEmpty.hidden = false;
-    els.tapCol.hidden = true;
     return;
   }
-  const e = Storage.getEntry(t.id);
   els.centerEmpty.hidden = true;
   els.centerCard.hidden = false;
-  els.tapCol.hidden = false;
   els.centerName.textContent = t.name;
   els.centerName.hidden = Boolean(t.image); // il nome è già stampato sulla carta
-  els.centerTotal.textContent = e.untapped + e.tapped;
-  els.numUntapped.textContent = e.untapped;
-  els.numTapped.textContent = e.tapped;
+  els.centerCount.textContent = Storage.total(t.id);
   if (t.image) { els.centerImg.src = t.image; els.centerImg.style.display = ''; }
   else { els.centerImg.style.display = 'none'; }
 }
 
-// --- contatore centrale ---
-els.btnPlus.addEventListener('click', () => {
-  if (!selectedId) return;
-  Storage.addOne(selectedId);
-  renderInPlay(); renderCenter();
-});
-
-els.btnMinus.addEventListener('click', () => {
-  if (!selectedId) return;
-  const e = Storage.getEntry(selectedId);
-  if (e.untapped + e.tapped === 0) return;
-  if (e.untapped > 0 && e.tapped > 0) {
-    els.removeModal.hidden = false; // ambiguo: chiedi
-  } else if (e.untapped > 0) {
-    Storage.removeUntapped(selectedId); renderInPlay(); renderCenter();
-  } else {
-    Storage.removeTapped(selectedId); renderInPlay(); renderCenter();
-  }
-});
-
-els.rmUntapped.addEventListener('click', () => {
-  Storage.removeUntapped(selectedId); els.removeModal.hidden = true; renderInPlay(); renderCenter();
-});
-els.rmTapped.addEventListener('click', () => {
-  Storage.removeTapped(selectedId); els.removeModal.hidden = true; renderInPlay(); renderCenter();
-});
-els.rmCancel.addEventListener('click', () => { els.removeModal.hidden = true; });
-
-// --- segnalini del token selezionato ---
-function renderCounters(t) {
-  els.counterCol.hidden = !t;
+// --- tray: una mini-carta per istanza ---
+function renderTray() {
+  const t = selectedId ? tokenById(selectedId) : null;
+  els.tray.hidden = !t;
   if (!t) return;
-  const counters = Storage.getCounters(t.id);
-  const names = Object.keys(counters).sort((a, b) => a.localeCompare(b));
-  els.counterEmpty.hidden = names.length > 0;
-  els.counterList.innerHTML = '';
-  names.forEach(name => {
-    const item = document.createElement('div');
-    item.className = 'counter-item';
 
-    const label = document.createElement('span');
-    label.className = 'counter-name';
-    label.textContent = name;
-    label.title = name;
+  const instances = Storage.getInstances(t.id);
 
-    const minus = document.createElement('button');
-    minus.className = 'counter-step';
-    minus.textContent = '−';
-    minus.setAttribute('aria-label', `Togli un segnalino ${name}`);
-    minus.addEventListener('click', () => {
-      Storage.changeCounter(t.id, name, -1);
-      renderCounters(t);
-    });
+  els.trayHeaderNormal.hidden = Boolean(selectMode);
+  els.trayHeaderSelect.hidden = !selectMode;
+  els.btnClearCounters.hidden = Boolean(selectMode) || !instances.some(i => i.p || i.t);
 
-    const qty = document.createElement('span');
-    qty.className = 'counter-qty';
-    qty.textContent = counters[name];
+  els.trayGrid.innerHTML = '';
+  instances.forEach((inst, i) => {
+    const mini = document.createElement('button');
+    mini.className = 'mini'
+      + (inst.tapped ? ' tapped' : '')
+      + (selectedInstances.has(i) ? ' selected' : '');
+    mini.dataset.index = i;
+    mini.setAttribute('aria-label', inst.tapped
+      ? `${t.name} tappato: tocca per stappare`
+      : `${t.name} stappato: tocca per tappare`);
 
-    const plus = document.createElement('button');
-    plus.className = 'counter-step';
-    plus.textContent = '+';
-    plus.setAttribute('aria-label', `Aggiungi un segnalino ${name}`);
-    plus.addEventListener('click', () => {
-      Storage.changeCounter(t.id, name, 1);
-      renderCounters(t);
-    });
+    const face = document.createElement('span');
+    face.className = inst.tapped ? 'mini-rot' : 'mini-face';
+    if (t.image) {
+      const img = document.createElement('img');
+      img.loading = 'lazy'; img.alt = ''; img.src = t.image;
+      face.appendChild(img);
+    }
+    mini.appendChild(face);
 
-    item.append(label, minus, qty, plus);
-    els.counterList.appendChild(item);
+    if (inst.p || inst.t) {
+      const badge = document.createElement('span');
+      badge.className = 'mini-badge';
+      badge.dataset.badge = '1';
+      badge.textContent = `${fmtMod(inst.p)}/${fmtMod(inst.t)}`;
+      mini.appendChild(badge);
+    }
+    els.trayGrid.appendChild(mini);
   });
 }
 
-function openCounterModal() {
-  const t = selectedId ? tokenById(selectedId) : null;
-  if (!t) return;
-  els.counterModalToken.textContent = t.name;
-  els.counterCustom.value = '';
-  els.counterModal.hidden = false;
+// tocco su una mini: tap/untap, oppure selezione in modalità selezione;
+// tocco sul badge: modifica mirata del segnalino di quella istanza.
+els.trayGrid.addEventListener('click', e => {
+  const mini = e.target.closest('.mini');
+  if (!mini || !selectedId) return;
+  const i = Number(mini.dataset.index);
+
+  if (selectMode) {
+    if (selectedInstances.has(i)) selectedInstances.delete(i);
+    else selectedInstances.add(i);
+    renderTray();
+    return;
+  }
+
+  if (e.target.closest('[data-badge]')) {
+    const inst = Storage.getInstances(selectedId)[i];
+    openEditor({ dp: inst.p, dt: inst.t, targets: [i], replace: true });
+    return;
+  }
+
+  Storage.toggleTap(selectedId, i);
+  renderTray();
+});
+
+// --- modalità selezione multipla ---
+function enterSelectMode(mode) {
+  if (!selectedId) return;
+  selectMode = mode;
+  selectedInstances = new Set();
+  els.boardView.classList.add('selecting');
+  els.boardScrim.hidden = false;
+  renderTray();
 }
 
-function addCounterAndClose(name) {
-  const trimmed = name.trim();
-  if (!trimmed || !selectedId) return;
-  Storage.changeCounter(selectedId, trimmed, 1);
-  els.counterModal.hidden = true;
-  renderCounters(tokenById(selectedId));
+function exitSelectMode() {
+  selectMode = null;
+  selectedInstances = new Set();
+  els.boardView.classList.remove('selecting');
+  els.boardScrim.hidden = true;
+  renderBoard();
 }
 
-els.btnAddCounter.addEventListener('click', openCounterModal);
-els.counterPresets.addEventListener('click', e => {
-  const btn = e.target.closest('[data-counter]');
-  if (btn) addCounterAndClose(btn.dataset.counter);
-});
-els.counterCustomAdd.addEventListener('click', () => addCounterAndClose(els.counterCustom.value));
-els.counterCustom.addEventListener('keydown', e => {
-  if (e.key === 'Enter') addCounterAndClose(els.counterCustom.value);
-});
-els.counterCancel.addEventListener('click', () => { els.counterModal.hidden = true; });
+els.btnSelectDone.addEventListener('click', () => {
+  if (!selectedId) { exitSelectMode(); return; }
+  const chosen = [...selectedInstances];
+  if (chosen.length === 0) { exitSelectMode(); return; }
 
-// --- tap / untap ---
-els.cellUntapped.addEventListener('click', () => {
-  if (!selectedId) return;
-  Storage.tapOne(selectedId); renderCenter();
+  if (selectMode === 'counter') {
+    // il tray resta in selezione sotto l'editor, come nel design
+    openEditor({ dp: 0, dt: 0, targets: chosen, replace: false });
+  } else if (selectMode === 'remove') {
+    Storage.removeAt(selectedId, chosen);
+    exitSelectMode();
+  } else if (selectMode === 'clear') {
+    Storage.clearCounters(selectedId, chosen);
+    exitSelectMode();
+  }
 });
-els.cellTapped.addEventListener('click', () => {
+
+els.boardScrim.addEventListener('click', exitSelectMode);
+
+// --- header del tray ---
+els.btnInstPlus.addEventListener('click', () => {
   if (!selectedId) return;
-  Storage.untapOne(selectedId); renderCenter();
+  Storage.addOne(selectedId);
+  renderBoard();
+});
+
+els.btnInstMinus.addEventListener('click', () => {
+  if (!selectedId) return;
+  const instances = Storage.getInstances(selectedId);
+  if (instances.length === 0) return;
+  const first = instances[0];
+  const allSame = instances.every(i =>
+    i.tapped === first.tapped && i.p === first.p && i.t === first.t);
+  if (allSame) {
+    Storage.removeAt(selectedId, [instances.length - 1]);
+    renderBoard();
+  } else {
+    enterSelectMode('remove');
+  }
+});
+
+els.btnAddCounter.addEventListener('click', () => enterSelectMode('counter'));
+els.btnClearCounters.addEventListener('click', () => enterSelectMode('clear'));
+
+// --- editor segnalini forza/costituzione ---
+function openEditor(config) {
+  editor = config;
+  renderEditor();
+  els.counterEditor.hidden = false;
+}
+
+function renderEditor() {
+  els.pwNum.textContent = fmtMod(editor.dp);
+  els.tgNum.textContent = fmtMod(editor.dt);
+}
+
+els.pwPlus.addEventListener('click', () => { editor.dp++; renderEditor(); });
+els.pwMinus.addEventListener('click', () => { editor.dp--; renderEditor(); });
+els.tgPlus.addEventListener('click', () => { editor.dt++; renderEditor(); });
+els.tgMinus.addEventListener('click', () => { editor.dt--; renderEditor(); });
+
+function applyEditor() {
+  if (!editor || !selectedId) { closeEditor(); return; }
+  Storage.applyCounter(selectedId, editor.targets, editor.dp, editor.dt, editor.replace);
+  closeEditor();
+}
+
+function closeEditor() {
+  editor = null;
+  els.counterEditor.hidden = true;
+  if (selectMode) exitSelectMode();
+  else renderBoard();
+}
+
+// tocco fuori dal riquadro = applica (il design non prevede un bottone di conferma)
+els.counterEditor.addEventListener('click', e => {
+  if (e.target === els.counterEditor) applyEditor();
+});
+
+// Escape: annulla l'editor senza applicare, oppure esce dalla selezione
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Escape') return;
+  if (!els.counterEditor.hidden) { closeEditor(); return; }
+  if (selectMode) exitSelectMode();
 });
 
 // --- overlay ricerca (aggiungi token dalla griglia del mazzo) ---
@@ -302,10 +382,10 @@ function renderSearchGrid(filter) {
         card.appendChild(fb);
       }
       card.addEventListener('click', () => {
-        Storage.addOne(t.id);      // entra con totale 1, stappato
+        Storage.addOne(t.id);      // entra con un'istanza stappata
         selectedId = t.id;
         els.searchOverlay.hidden = true;
-        renderInPlay(); renderCenter();
+        renderBoard();
       });
       els.searchGrid.appendChild(card);
     });
@@ -318,11 +398,16 @@ els.searchClose.addEventListener('click', () => { els.searchOverlay.hidden = tru
 els.btnMenu.addEventListener('click', () => { els.menuSheet.hidden = false; });
 els.menuClose.addEventListener('click', () => { els.menuSheet.hidden = true; });
 els.menuNewGame.addEventListener('click', () => {
-  Storage.resetState(); els.menuSheet.hidden = true; selectedId = null; renderInPlay(); renderCenter();
+  Storage.resetState();
+  els.menuSheet.hidden = true;
+  selectedId = null;
+  if (selectMode) exitSelectMode();
+  else renderBoard();
 });
 els.menuChangeDeck.addEventListener('click', () => {
   Storage.clearDeck();
   els.menuSheet.hidden = true;
+  if (selectMode) exitSelectMode();
   document.body.classList.remove('board-active');
   els.boardView.hidden = true;
   els.input.value = '';
