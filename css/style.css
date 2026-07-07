@@ -420,6 +420,25 @@ summary {
     text-overflow: ellipsis;
 }
 
+/* etichetta della copia: pillola scura sopra la fascia titolo della riga */
+.play-copy-label {
+    position: absolute;
+    top: 8px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 1;
+    max-width: 68%;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: var(--overlay);
+    color: var(--text-inverted);
+    font-size: 0.7rem;
+    line-height: 1.4;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
 .play-badge {
     position: absolute;
     top: 13px;
@@ -539,6 +558,28 @@ summary {
     display: flex;
     align-items: center;
     justify-content: center;
+}
+
+/* campo di testo per etichettare la copia, sulla fascia di testo della carta.
+   Selettore discendente per battere la specificità di input[type="text"]. */
+.center-card .center-copy-label {
+    position: absolute;
+    z-index: 1;
+    left: 8%;
+    right: 8%;
+    bottom: 14%;
+    width: auto;
+    text-align: center;
+    background: var(--text-inverted);
+    color: var(--text);
+    border: 1px solid var(--golden-orange);
+    border-radius: var(--radius-field);
+    padding: 8px 12px;
+    font-size: 1rem;
+}
+
+.center-card .center-copy-label::placeholder {
+    color: var(--placeholder);
 }
 
 /* --- tray: una mini-carta per istanza --- */

@@ -19,6 +19,7 @@ const els = {
   centerImg: document.getElementById('center-img'),
   centerName: document.getElementById('center-name'),
   centerCount: document.getElementById('center-count'),
+  centerCopyLabel: document.getElementById('center-copy-label'),
   // tray
   tray: document.getElementById('tray'),
   trayGrid: document.getElementById('tray-grid'),
@@ -80,6 +81,36 @@ crossfade.timers = {};
 
 let lastCenterTokenId; // undefined finché non c'è stato un primo render
 let lastTrayTokenId;
+
+// id di una copia appena creata da mettere a fuoco per l'etichetta
+let pendingFocusCopy = null;
+
+// --- token copia: ogni copia è una riga a sé con etichetta modificabile ---
+function newCopyId() {
+  return (self.crypto && crypto.randomUUID)
+    ? 'copy-' + crypto.randomUUID()
+    : 'copy-' + Date.now() + '-' + Math.random().toString(36).slice(2);
+}
+
+// Crea una nuova entità copia clonando il token base, con un'istanza in gioco.
+function createCopyEntry(base) {
+  const entry = {
+    id: newCopyId(),
+    name: base.name,
+    image: base.image,
+    typeLine: base.typeLine,
+    oracleText: base.oracleText,
+    isCopy: true,
+    dynamic: true, // creata a runtime: fuori dalla ricerca, azzerata a nuova partita
+    label: ''
+  };
+  allTokens.push(entry);
+  Storage.saveTokens(allTokens);
+  Storage.addOne(entry.id);
+  return entry;
+}
+
+function isCopyEntry(t) { return Boolean(t && t.dynamic && t.isCopy); }
 
 function setStatus(message, isError = false) {
   els.status.textContent = message;
@@ -174,6 +205,15 @@ function renderStack() {
     }
     card.appendChild(face);
 
+    // etichetta della copia sopra la fascia titolo, per distinguere le copie
+    if (isCopyEntry(t)) {
+      const cap = document.createElement('span');
+      cap.className = 'play-copy-label';
+      cap.textContent = t.label || 'Copia';
+      card.appendChild(cap);
+      card.setAttribute('aria-label', t.label ? `Copia: ${t.label}` : 'Copia senza nome');
+    }
+
     const badge = document.createElement('span');
     badge.className = 'play-badge';
     badge.textContent = Storage.total(t.id);
@@ -205,6 +245,17 @@ function renderCenter() {
       els.centerCount.textContent = Storage.total(t.id);
       if (t.image) { els.centerImg.src = t.image; els.centerImg.style.display = ''; }
       else { els.centerImg.style.display = 'none'; }
+
+      const copy = isCopyEntry(t);
+      els.centerCopyLabel.hidden = !copy;
+      // non sovrascrivere mentre l'utente sta digitando
+      if (copy && document.activeElement !== els.centerCopyLabel) {
+        els.centerCopyLabel.value = t.label || '';
+      }
+      if (copy && pendingFocusCopy === t.id) {
+        pendingFocusCopy = null;
+        els.centerCopyLabel.focus();
+      }
     }
     lastCenterTokenId = newId;
   };
@@ -401,7 +452,8 @@ function renderSearchGrid(filter) {
   const q = filter.trim().toLowerCase();
   els.searchGrid.innerHTML = '';
   allTokens
-    .filter(t => !q || t.name.toLowerCase().includes(q))
+    // le copie create a runtime non sono "token del mazzo": fuori dalla ricerca
+    .filter(t => !t.dynamic && (!q || t.name.toLowerCase().includes(q)))
     .forEach(t => {
       const card = document.createElement('button');
       card.className = 'search-card';
@@ -415,8 +467,15 @@ function renderSearchGrid(filter) {
         card.appendChild(fb);
       }
       card.addEventListener('click', () => {
-        Storage.addOne(t.id);      // entra con un'istanza stappata
-        selectedId = t.id;
+        if (t.isCopy) {
+          // il token copia non si accumula: ogni scelta crea una copia nuova
+          const entry = createCopyEntry(t);
+          selectedId = entry.id;
+          pendingFocusCopy = entry.id;
+        } else {
+          Storage.addOne(t.id);    // entra con un'istanza stappata
+          selectedId = t.id;
+        }
         els.searchOverlay.hidden = true;
         renderBoard();
       });
@@ -427,11 +486,30 @@ els.btnAdd.addEventListener('click', openSearch);
 els.searchInput.addEventListener('input', e => renderSearchGrid(e.target.value));
 els.searchClose.addEventListener('click', () => { els.searchOverlay.hidden = true; });
 
+// --- etichetta della copia (campo di testo sulla carta centrale) ---
+els.centerCopyLabel.addEventListener('input', () => {
+  const t = selectedId ? tokenById(selectedId) : null;
+  if (!isCopyEntry(t)) return;
+  t.label = els.centerCopyLabel.value;
+  Storage.saveTokens(allTokens);
+  // aggiorna la sola riga selezionata senza ricostruire (non perde il focus)
+  const cap = els.stack.querySelector('.play-card.selected .play-copy-label');
+  if (cap) cap.textContent = t.label || 'Copia';
+  const card = els.stack.querySelector('.play-card.selected');
+  if (card) card.setAttribute('aria-label', t.label ? `Copia: ${t.label}` : 'Copia senza nome');
+});
+els.centerCopyLabel.addEventListener('keydown', e => {
+  if (e.key === 'Enter') els.centerCopyLabel.blur();
+});
+
 // --- menu ---
 els.btnMenu.addEventListener('click', () => { els.menuSheet.hidden = false; });
 els.menuClose.addEventListener('click', () => { els.menuSheet.hidden = true; });
 els.menuNewGame.addEventListener('click', () => {
   Storage.resetState();
+  // le copie etichettate erano specifiche di quella partita: via
+  allTokens = allTokens.filter(t => !t.dynamic);
+  Storage.saveTokens(allTokens);
   els.menuSheet.hidden = true;
   selectedId = null;
   if (selectMode) exitSelectMode();

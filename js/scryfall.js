@@ -59,14 +59,19 @@ const Scryfall = {
     const tokenIdentifiers = [...tokenIds].map(id => ({ id }));
     const tokenCards = await this.postCollection(tokenIdentifiers);
 
-    const tokens = tokenCards.map(t => ({
-      id: t.id,
-      name: t.name,
-      // preferisci l'immagine normal, ricadi su altre dimensioni se assente
-      image: t.image_uris?.normal || t.image_uris?.large || t.image_uris?.small || null,
-      typeLine: t.type_line || '',
-      oracleText: t.oracle_text || ''
-    })).sort((a, b) => a.name.localeCompare(b.name, 'it'));
+    const tokens = tokenCards.map(t => {
+      const oracle = t.oracle_text || '';
+      return {
+        id: t.id,
+        name: t.name,
+        // preferisci l'immagine normal, ricadi su altre dimensioni se assente
+        image: t.image_uris?.normal || t.image_uris?.large || t.image_uris?.small || null,
+        typeLine: t.type_line || '',
+        oracleText: oracle,
+        // token "copia" generico: rappresenta una copia di un altro permanente
+        isCopy: t.name === 'Copy' || /copy of a permanent/i.test(oracle)
+      };
+    }).sort((a, b) => a.name.localeCompare(b.name, 'it'));
 
     return { tokens, cardCount: cards.length };
   }

@@ -35,6 +35,12 @@ const Storage = {
     return hash;
   },
 
+  // Aggiorna la sola lista token (es. copie create a runtime) senza toccare
+  // lo stato di gioco, che è indicizzato per id e persiste a parte.
+  saveTokens(tokens) {
+    localStorage.setItem(this.KEYS.TOKENS, JSON.stringify(tokens));
+  },
+
   loadDeck() {
     const tokensRaw = localStorage.getItem(this.KEYS.TOKENS);
     const cardsRaw = localStorage.getItem(this.KEYS.DECK_CARDS);
