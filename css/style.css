@@ -474,7 +474,7 @@ summary {
     display: flex;
     align-items: flex-start;
     gap: 24px;
-    padding-top: 32px;
+    padding: 32px 0 12px;
 }
 
 .center-empty {
@@ -487,7 +487,9 @@ summary {
 
 .center-card {
     position: relative;
-    height: min(363px, calc(100dvh - 110px));
+    /* riempie tutta l'altezza disponibile in .board-main; la larghezza
+       segue dall'aspect-ratio invece di un'altezza fissa a 363px */
+    align-self: stretch;
     aspect-ratio: var(--card-ratio);
     flex-shrink: 0;
     border-radius: var(--radius-card);
