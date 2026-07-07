@@ -14,6 +14,42 @@ const Scryfall = {
     return out;
   },
 
+  // immagine di una carta, gestendo anche le doppia-faccia
+  cardImage(c) {
+    return c.image_uris?.normal || c.image_uris?.large || c.image_uris?.small
+      || c.card_faces?.[0]?.image_uris?.normal
+      || c.card_faces?.[0]?.image_uris?.large || null;
+  },
+
+  cardToToken(c) {
+    const oracle = c.oracle_text || '';
+    return {
+      id: c.id,
+      name: c.name,
+      image: this.cardImage(c),
+      typeLine: c.type_line || '',
+      oracleText: oracle,
+      isCopy: c.name === 'Copy' || /copy of a permanent/i.test(oracle)
+    };
+  },
+
+  // Immagine della carta nominata (fuzzy), per il token copia. null se non trovata.
+  async namedCardImage(name, signal) {
+    const res = await fetch(`${this.API_BASE}/cards/named?fuzzy=${encodeURIComponent(name)}`, { signal });
+    if (!res.ok) return null; // 404/400 = non trovata o ambigua
+    return this.cardImage(await res.json());
+  },
+
+  // Ricerca token su Scryfall (per aggiungere token esterni al mazzo).
+  async searchTokens(query, signal) {
+    const q = `${query} t:token`;
+    const url = `${this.API_BASE}/cards/search?q=${encodeURIComponent(q)}&unique=cards&order=name`;
+    const res = await fetch(url, { signal });
+    if (!res.ok) return []; // 404 = nessun risultato
+    const data = await res.json();
+    return (data.data || []).slice(0, 30).map(c => this.cardToToken(c));
+  },
+
   async postCollection(identifiers) {
     const batches = this.chunk(identifiers, this.MAX_BATCH);
     const results = [];
@@ -59,19 +95,9 @@ const Scryfall = {
     const tokenIdentifiers = [...tokenIds].map(id => ({ id }));
     const tokenCards = await this.postCollection(tokenIdentifiers);
 
-    const tokens = tokenCards.map(t => {
-      const oracle = t.oracle_text || '';
-      return {
-        id: t.id,
-        name: t.name,
-        // preferisci l'immagine normal, ricadi su altre dimensioni se assente
-        image: t.image_uris?.normal || t.image_uris?.large || t.image_uris?.small || null,
-        typeLine: t.type_line || '',
-        oracleText: oracle,
-        // token "copia" generico: rappresenta una copia di un altro permanente
-        isCopy: t.name === 'Copy' || /copy of a permanent/i.test(oracle)
-      };
-    }).sort((a, b) => a.name.localeCompare(b.name, 'it'));
+    const tokens = tokenCards
+      .map(t => this.cardToToken(t))
+      .sort((a, b) => a.name.localeCompare(b.name, 'it'));
 
     return { tokens, cardCount: cards.length };
   }

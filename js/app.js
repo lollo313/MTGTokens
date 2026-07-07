@@ -44,6 +44,8 @@ const els = {
   searchInput: document.getElementById('search-input'),
   searchGrid: document.getElementById('search-grid'),
   searchClose: document.getElementById('search-close'),
+  searchModeDeck: document.getElementById('search-mode-deck'),
+  searchModeScryfall: document.getElementById('search-mode-scryfall'),
   // menu
   btnMenu: document.getElementById('btn-menu'),
   menuSheet: document.getElementById('menu-sheet'),
@@ -98,6 +100,7 @@ function createCopyEntry(base) {
     id: newCopyId(),
     name: base.name,
     image: base.image,
+    baseImage: base.image, // arte del token Copy, ripristinata se l'etichetta è vuota
     typeLine: base.typeLine,
     oracleText: base.oracleText,
     isCopy: true,
@@ -111,6 +114,40 @@ function createCopyEntry(base) {
 }
 
 function isCopyEntry(t) { return Boolean(t && t.dynamic && t.isCopy); }
+
+// Fetch (con debounce) dell'immagine della carta copiata, applicata alla copia.
+let copyImgTimer = null;
+let copyImgSeq = 0;
+let copyImgController = null;
+
+function scheduleCopyImageFetch(entry) {
+  clearTimeout(copyImgTimer);
+  const label = entry.label.trim();
+  if (!label) {
+    // etichetta vuota: torna all'arte del token Copy
+    if (entry.image !== entry.baseImage) {
+      entry.image = entry.baseImage;
+      Storage.saveTokens(allTokens);
+      if (selectedId === entry.id) renderBoard();
+    }
+    return;
+  }
+  copyImgTimer = setTimeout(async () => {
+    const seq = ++copyImgSeq;
+    if (copyImgController) copyImgController.abort();
+    copyImgController = new AbortController();
+    try {
+      const img = await Scryfall.namedCardImage(label, copyImgController.signal);
+      if (seq !== copyImgSeq) return;         // richiesta superata da una più recente
+      const target = img || entry.baseImage;  // non trovata: ripiega sull'arte del Copy
+      if (target !== entry.image) {
+        entry.image = target;
+        Storage.saveTokens(allTokens);
+        if (selectedId === entry.id) renderBoard();
+      }
+    } catch (e) { /* abort o rete: mantieni l'immagine attuale */ }
+  }, 500);
+}
 
 function setStatus(message, isError = false) {
   els.status.textContent = message;
@@ -440,51 +477,122 @@ document.addEventListener('keydown', e => {
   if (selectMode) exitSelectMode();
 });
 
-// --- overlay ricerca (aggiungi token dalla griglia del mazzo) ---
+// --- overlay ricerca: token del mazzo oppure ricerca su Scryfall ---
+let searchMode = 'deck'; // 'deck' | 'scryfall'
+let scryfallTimer = null;
+let scryfallSeq = 0;
+let scryfallController = null;
+
 function openSearch() {
   els.searchInput.value = '';
-  renderSearchGrid('');
   els.searchOverlay.hidden = false;
+  setSearchMode('deck');
   // con la barra in alto la tastiera in landscape non copre più la scelta
   els.searchInput.focus();
 }
-function renderSearchGrid(filter) {
+
+function closeSearch() {
+  clearTimeout(scryfallTimer);
+  if (scryfallController) scryfallController.abort();
+  els.searchOverlay.hidden = true;
+}
+
+function setSearchMode(mode) {
+  searchMode = mode;
+  els.searchModeDeck.classList.toggle('active', mode === 'deck');
+  els.searchModeScryfall.classList.toggle('active', mode === 'scryfall');
+  els.searchInput.placeholder = mode === 'scryfall' ? 'Cerca su Scryfall…' : 'Cerca';
+  runSearch(els.searchInput.value);
+}
+
+function runSearch(value) {
+  if (searchMode === 'deck') renderDeckResults(value);
+  else scheduleScryfallSearch(value);
+}
+
+// costruisce una card di risultato con l'azione al click
+function buildResultCard(t, onPick) {
+  const card = document.createElement('button');
+  card.className = 'search-card';
+  if (t.image) {
+    const img = document.createElement('img');
+    img.loading = 'lazy'; img.alt = t.name; img.src = t.image;
+    card.appendChild(img);
+  } else {
+    const fb = document.createElement('div');
+    fb.className = 'search-fallback'; fb.textContent = t.name;
+    card.appendChild(fb);
+  }
+  card.addEventListener('click', onPick);
+  return card;
+}
+
+function searchMessage(text) {
+  els.searchGrid.innerHTML = '';
+  const msg = document.createElement('div');
+  msg.className = 'search-msg';
+  msg.textContent = text;
+  els.searchGrid.appendChild(msg);
+}
+
+// aggiunge/seleziona un token; i token copia diventano un'entità etichettabile
+function pickToken(t, { persistNew = false } = {}) {
+  if (t.isCopy) {
+    const entry = createCopyEntry(t);
+    selectedId = entry.id;
+    pendingFocusCopy = entry.id;
+  } else {
+    let entry = tokenById(t.id);
+    if (!entry) {
+      entry = { ...t };
+      if (persistNew) entry.added = true; // token esterno aggiunto da Scryfall
+      allTokens.push(entry);
+      Storage.saveTokens(allTokens);
+    }
+    Storage.addOne(entry.id);
+    selectedId = entry.id;
+  }
+  closeSearch();
+  renderBoard();
+}
+
+function renderDeckResults(filter) {
   const q = filter.trim().toLowerCase();
   els.searchGrid.innerHTML = '';
-  allTokens
-    // le copie create a runtime non sono "token del mazzo": fuori dalla ricerca
-    .filter(t => !t.dynamic && (!q || t.name.toLowerCase().includes(q)))
-    .forEach(t => {
-      const card = document.createElement('button');
-      card.className = 'search-card';
-      if (t.image) {
-        const img = document.createElement('img');
-        img.loading = 'lazy'; img.alt = t.name; img.src = t.image;
-        card.appendChild(img);
-      } else {
-        const fb = document.createElement('div');
-        fb.className = 'search-fallback'; fb.textContent = t.name;
-        card.appendChild(fb);
-      }
-      card.addEventListener('click', () => {
-        if (t.isCopy) {
-          // il token copia non si accumula: ogni scelta crea una copia nuova
-          const entry = createCopyEntry(t);
-          selectedId = entry.id;
-          pendingFocusCopy = entry.id;
-        } else {
-          Storage.addOne(t.id);    // entra con un'istanza stappata
-          selectedId = t.id;
-        }
-        els.searchOverlay.hidden = true;
-        renderBoard();
-      });
-      els.searchGrid.appendChild(card);
-    });
+  // le copie create a runtime non sono "token del mazzo": fuori dalla ricerca
+  const list = allTokens.filter(t => !t.dynamic && (!q || t.name.toLowerCase().includes(q)));
+  if (list.length === 0) { searchMessage('Nessun token nel mazzo'); return; }
+  list.forEach(t => els.searchGrid.appendChild(buildResultCard(t, () => pickToken(t))));
 }
+
+function scheduleScryfallSearch(value) {
+  clearTimeout(scryfallTimer);
+  const q = value.trim();
+  if (q.length < 2) { searchMessage('Digita per cercare token su Scryfall'); return; }
+  searchMessage('Cerco…');
+  scryfallTimer = setTimeout(async () => {
+    const seq = ++scryfallSeq;
+    if (scryfallController) scryfallController.abort();
+    scryfallController = new AbortController();
+    try {
+      const results = await Scryfall.searchTokens(q, scryfallController.signal);
+      if (seq !== scryfallSeq) return; // superata da una richiesta più recente
+      if (results.length === 0) { searchMessage('Nessun token trovato'); return; }
+      els.searchGrid.innerHTML = '';
+      results.forEach(t => els.searchGrid.appendChild(
+        buildResultCard(t, () => pickToken(t, { persistNew: true }))));
+    } catch (e) {
+      if (e.name === 'AbortError') return;
+      if (seq === scryfallSeq) searchMessage('Ricerca non riuscita. Riprova.');
+    }
+  }, 450);
+}
+
 els.btnAdd.addEventListener('click', openSearch);
-els.searchInput.addEventListener('input', e => renderSearchGrid(e.target.value));
-els.searchClose.addEventListener('click', () => { els.searchOverlay.hidden = true; });
+els.searchInput.addEventListener('input', e => runSearch(e.target.value));
+els.searchModeDeck.addEventListener('click', () => setSearchMode('deck'));
+els.searchModeScryfall.addEventListener('click', () => setSearchMode('scryfall'));
+els.searchClose.addEventListener('click', closeSearch);
 
 // --- etichetta della copia (campo di testo sulla carta centrale) ---
 els.centerCopyLabel.addEventListener('input', () => {
@@ -497,6 +605,8 @@ els.centerCopyLabel.addEventListener('input', () => {
   if (cap) cap.textContent = t.label || 'Copia';
   const card = els.stack.querySelector('.play-card.selected');
   if (card) card.setAttribute('aria-label', t.label ? `Copia: ${t.label}` : 'Copia senza nome');
+  // cerca l'immagine della carta copiata (con debounce)
+  scheduleCopyImageFetch(t);
 });
 els.centerCopyLabel.addEventListener('keydown', e => {
   if (e.key === 'Enter') els.centerCopyLabel.blur();

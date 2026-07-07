@@ -911,6 +911,44 @@ summary {
     flex-shrink: 0;
 }
 
+/* toggle sorgente ricerca: Mazzo / Scryfall */
+.search-toggle {
+    flex-shrink: 0;
+    display: flex;
+    padding: 3px;
+    gap: 2px;
+    border-radius: 999px;
+    background: var(--overlay);
+}
+
+.search-toggle-btn {
+    border: none;
+    background: none;
+    color: var(--text-inverted-soft);
+    font-size: 0.8rem;
+    padding: 6px 14px;
+    border-radius: 999px;
+    line-height: 1;
+}
+
+.search-toggle-btn.active {
+    background: var(--golden-orange);
+    color: var(--num-text);
+}
+
+.search-toggle-btn:not(.active):not(:disabled):hover {
+    color: var(--text-inverted);
+}
+
+/* messaggio di stato nella riga risultati (vuoto, caricamento, errore) */
+.search-msg {
+    align-self: center;
+    color: var(--text);
+    font-size: 0.85rem;
+    white-space: nowrap;
+    padding: 0 8px;
+}
+
 .search-grid {
     flex: 1;
     min-width: 0;
