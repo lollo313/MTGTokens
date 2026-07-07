@@ -5,7 +5,7 @@
 // Le chiamate a Scryfall/Archidekt vanno sempre in rete: non vogliamo servire
 // dati di carte/token da una cache potenzialmente vecchia.
 
-const CACHE_NAME = 'token-tracker-v4';
+const CACHE_NAME = 'token-tracker-v5';
 const APP_SHELL = [
   './',
   './index.html',
@@ -14,6 +14,7 @@ const APP_SHELL = [
   './js/app.js',
   './js/scryfall.js',
   './js/storage.js',
+  './img/bg-texture.png',
   './icons/icon-192.png',
   './icons/icon-512.png'
 ];
