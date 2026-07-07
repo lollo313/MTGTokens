@@ -70,9 +70,10 @@
 html, body {
     margin: 0;
     min-height: 100vh;
+    min-height: 100dvh;
     background-color: var(--bg);
     /* texture in multiply sopra il fade verticale bg -> pacific blue */
-    background-image: url('../img/bg-texture.png'), linear-gradient(to bottom, var(--bg), var(--pacific-blue));
+    background-image: url('../img/bg-texture-1.png'), linear-gradient(to bottom, var(--bg), var(--pacific-blue));
     background-size: cover, 100% 100%;
     background-repeat: no-repeat;
     background-blend-mode: multiply, normal;
@@ -349,6 +350,7 @@ summary {
        2px di tolleranza laterale per non tagliare l'anello di selezione */
     padding: 32px 2px 12px;
     scrollbar-width: none;
+    overscroll-behavior: contain;
 }
 
 .stack::-webkit-scrollbar {
@@ -692,6 +694,7 @@ summary {
     /* tolleranza verticale: anello hover e badge non vengono tagliati */
     padding: 4px 28px 8px;
     scrollbar-width: none;
+    overscroll-behavior: contain;
     transition: opacity 0.15s ease;
 }
 
@@ -959,6 +962,7 @@ summary {
     /* tolleranza per l'anello hover delle carte */
     padding-block: 4px;
     scrollbar-width: none;
+    overscroll-behavior: contain;
 }
 
 .search-grid::-webkit-scrollbar {
@@ -1080,6 +1084,20 @@ body.board-active #import-view {
     display: none;
 }
 
+/* Board attiva: blocca l'app all'altezza del viewport VISIBILE (dvh) e niente
+   scroll di pagina né rimbalzo. Su mobile il body con min-height:100vh (viewport
+   "grande", barra indirizzi nascosta) faceva scrollare l'intera pagina; così a
+   scorrere restano solo le griglie interne (tray istanze e risultati ricerca). */
+body.board-active {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 100dvh;
+    overflow: hidden;
+    overscroll-behavior: none;
+}
+
 /* --- drawer dei token in gioco (solo portrait) ---
    Maniglia e scrim vivono solo in portrait: display:none di base così in
    landscape non compaiono mai, nemmeno se lo scrim venisse mostrato via JS. */
@@ -1171,10 +1189,12 @@ body.board-active #import-view {
         display: none;
     }
 
-    /* il padding orizzontale è ora sul drawer; qui resta solo la tolleranza
-       laterale (2px) perché overflow-y non tagli l'anello di selezione */
+    /* il padding orizzontale grosso è sul drawer; qui resta la tolleranza per
+       l'anello di selezione: overflow-y:auto rende scroll container anche
+       l'asse X, quindi servono px su tutti i lati per non tagliare il bordo
+       arancio (in alto della prima riga selezionata compreso) */
     .stack {
-        padding: 0 2px;
+        padding: 4px 2px 12px;
     }
 
     /* il "+" scorre nel flusso, in fondo al drawer sotto la lista */
@@ -1215,46 +1235,72 @@ body.board-active #import-view {
         margin: 24px 16px 0;
     }
 
-    /* --- ricerca: barra in alto + griglia verticale a 3 colonne --- */
+    /* --- ricerca (Figma Frame 82): sheet in alto a vetro chiaro con angoli
+       inferiori arrotondati; input "Cerca", toggle segmentato full-width,
+       griglia risultati a 3 colonne che scorre; board oscurata sotto --- */
     .search-overlay {
         justify-content: flex-start;
-        gap: 12px;
     }
 
     .search-panel {
-        flex: 1;
-        min-height: 0;
         width: 100%;
+        max-height: 80dvh;
         flex-direction: column;
         align-items: stretch;
         gap: 12px;
-        padding: max(16px, env(safe-area-inset-top)) 16px 8px;
-        background: none;
-        -webkit-backdrop-filter: none;
-        backdrop-filter: none;
-        box-shadow: none;
-        border-radius: 0;
+        /* spazio in alto per la X; bg vetro chiaro, blur e angoli inferiori
+           arrotondati restano dalla regola base (come nel Figma) */
+        padding: calc(env(safe-area-inset-top, 0px) + 52px) 20px 24px;
     }
 
+    /* ordine come nel Figma: input, poi toggle, poi griglia */
     .search-panel input {
+        order: 1;
         width: 100%;
     }
 
+    /* toggle segmentato: traccia chiara, segmenti a metà, attivo scuro */
     .search-toggle {
-        align-self: center;
+        order: 2;
+        align-self: stretch;
+        gap: 4px;
+        padding: 2px;
+        border-radius: 13px;
+        background: var(--text-inverted);
+    }
+
+    .search-toggle-btn {
+        flex: 1;
+        padding: 8px;
+        font-size: 0.95rem;
+        border-radius: 12px;
+        color: var(--text);
+    }
+
+    .search-toggle-btn.active {
+        background: var(--overlay);
+        color: var(--text-inverted);
+    }
+
+    .search-toggle-btn:not(.active):not(:disabled):hover {
+        color: var(--text);
     }
 
     .search-grid {
-        flex: 1;
+        order: 3;
+        flex: 0 1 auto;
         min-height: 0;
         display: grid;
         grid-template-columns: repeat(3, 1fr);
-        column-gap: 10px;
-        row-gap: 10px;
+        /* max-content sulle righe: senza, le righe collassano e le carte
+           (immagine in absolute) si sovrappongono — stesso schema del tray */
+        grid-auto-rows: max-content;
+        column-gap: 12px;
+        row-gap: 12px;
         align-content: start;
         overflow-x: hidden;
         overflow-y: auto;
-        padding: 4px 2px 8px;
+        padding: 2px;
     }
 
     .search-card {
@@ -1266,14 +1312,14 @@ body.board-active #import-view {
         grid-column: 1 / -1;
     }
 
-    /* chiusura ricerca: bottone tondo in alto a destra, come il resto in portrait */
+    /* chiusura: X tonda in alto a destra, nella fascia superiore della sheet */
     .search-close {
         position: absolute;
-        top: max(12px, env(safe-area-inset-top));
-        right: 12px;
+        top: calc(env(safe-area-inset-top, 0px) + 8px);
+        right: 16px;
         z-index: 2;
-        width: 44px;
-        height: 44px;
+        width: 40px;
+        height: 40px;
         padding: 0;
         margin: 0;
         display: flex;
