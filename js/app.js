@@ -362,7 +362,7 @@ function openSearch() {
   els.searchInput.value = '';
   renderSearchGrid('');
   els.searchOverlay.hidden = false;
-  els.searchInput.focus();
+  // niente autofocus: in landscape la tastiera coprirebbe la griglia
 }
 function renderSearchGrid(filter) {
   const q = filter.trim().toLowerCase();
