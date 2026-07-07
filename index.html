@@ -99,6 +99,13 @@
     </div>
   </div>
 
+  <!-- Portrait: maniglia sul bordo sinistro per aprire il drawer dei token in gioco -->
+  <button id="drawer-handle" class="drawer-handle" aria-label="Mostra i token in gioco" aria-expanded="false">
+    <span class="drawer-handle-grip"></span>
+  </button>
+  <!-- Portrait: scrim dietro al drawer aperto (tap per chiudere) -->
+  <div id="drawer-scrim" class="drawer-scrim" hidden></div>
+
   <!-- Scrim modalità selezione: il tray resta in chiaro sopra -->
   <div id="board-scrim" class="board-scrim" hidden></div>
 
@@ -146,9 +153,6 @@
     </div>
   </div>
 </section>
-
-<!-- Avviso orientamento su mobile portrait -->
-<div id="rotate-hint" class="rotate-hint">Ruota il telefono in orizzontale per la board.</div>
 
 <script src="js/storage.js"></script>
 <script src="js/scryfall.js"></script>

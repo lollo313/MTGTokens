@@ -14,6 +14,8 @@ const els = {
   boardView: document.getElementById('board-view'),
   stack: document.getElementById('stack'),
   btnAdd: document.getElementById('btn-add'),
+  drawerHandle: document.getElementById('drawer-handle'),
+  drawerScrim: document.getElementById('drawer-scrim'),
   centerEmpty: document.getElementById('center-empty'),
   centerCard: document.getElementById('center-card'),
   centerImg: document.getElementById('center-img'),
@@ -198,6 +200,7 @@ function enterBoard(tokens) {
   els.boardView.hidden = false;
   selectedId = null;
   renderBoard();
+  maybeAutoOpenDrawer();
 }
 
 function tokenById(id) { return allTokens.find(t => t.id === id); }
@@ -259,6 +262,7 @@ function renderStack() {
     card.addEventListener('click', () => {
       if (selectMode) return; // durante la selezione la pila è sotto lo scrim
       selectedId = t.id;
+      closeDrawer(); // in portrait: scelto il token, torna alla board
       renderBoard();
     });
     els.stack.appendChild(card);
@@ -553,6 +557,7 @@ function pickToken(t, { persistNew = false } = {}) {
     selectedId = entry.id;
   }
   closeSearch();
+  closeDrawer(); // aggiunto il token, torna alla board
   renderBoard();
 }
 
@@ -612,6 +617,70 @@ els.centerCopyLabel.addEventListener('keydown', e => {
   if (e.key === 'Enter') els.centerCopyLabel.blur();
 });
 
+// --- drawer dei token in gioco (solo portrait) ---
+// In portrait la pila (board-left) diventa un drawer che entra da sinistra,
+// aperto dalla maniglia sul bordo o con uno swipe. In landscape non esiste:
+// le funzioni restano innocue (rimuovono classi/attributi non presenti).
+const portraitMQ = matchMedia('(orientation: portrait)');
+function isPortrait() { return portraitMQ.matches; }
+
+function openDrawer() {
+  if (selectMode) return; // durante la selezione multipla il drawer non si apre
+  els.boardView.classList.add('drawer-open');
+  els.drawerScrim.hidden = false;
+  els.drawerHandle.setAttribute('aria-expanded', 'true');
+}
+
+function closeDrawer() {
+  els.boardView.classList.remove('drawer-open');
+  els.drawerScrim.hidden = true;
+  els.drawerHandle.setAttribute('aria-expanded', 'false');
+}
+
+function toggleDrawer() {
+  if (els.boardView.classList.contains('drawer-open')) closeDrawer();
+  else openDrawer();
+}
+
+// senza token in gioco (mazzo appena aperto, nuova partita) il drawer si apre
+// da solo in portrait, così sono subito visibili la lista e il "+"
+function maybeAutoOpenDrawer() {
+  if (isPortrait() && inPlayTokens().length === 0) openDrawer();
+}
+
+els.drawerHandle.addEventListener('click', toggleDrawer);
+els.drawerScrim.addEventListener('click', closeDrawer);
+// ruotando il dispositivo il drawer perde senso: reset dello stato
+portraitMQ.addEventListener('change', closeDrawer);
+
+// swipe: apri trascinando dal bordo sinistro, chiudi trascinando verso sinistra.
+// Listener passivi (niente preventDefault): lo scroll verticale della pila resta intatto.
+(function drawerSwipe() {
+  let sx = 0, sy = 0, tracking = false, fromEdge = false;
+  const THRESH = 45;
+  window.addEventListener('touchstart', e => {
+    tracking = false;
+    if (!isPortrait() || selectMode) return;
+    // un overlay superiore (ricerca, editor, menu) ha la precedenza
+    if (!els.searchOverlay.hidden || !els.counterEditor.hidden || !els.menuSheet.hidden) return;
+    const t = e.touches[0];
+    sx = t.clientX; sy = t.clientY;
+    fromEdge = sx <= 24;
+    // chiudi da qualunque punto se aperto; apri solo partendo dal bordo
+    tracking = els.boardView.classList.contains('drawer-open') || fromEdge;
+  }, { passive: true });
+  window.addEventListener('touchend', e => {
+    if (!tracking) return;
+    tracking = false;
+    const t = e.changedTouches[0];
+    const dx = t.clientX - sx, dy = t.clientY - sy;
+    if (Math.abs(dx) < THRESH || Math.abs(dx) <= Math.abs(dy)) return; // dev'essere orizzontale
+    const open = els.boardView.classList.contains('drawer-open');
+    if (open && dx < 0) closeDrawer();
+    else if (!open && fromEdge && dx > 0) openDrawer();
+  }, { passive: true });
+})();
+
 // --- menu ---
 els.btnMenu.addEventListener('click', () => { els.menuSheet.hidden = false; });
 els.menuClose.addEventListener('click', () => { els.menuSheet.hidden = true; });
@@ -624,11 +693,13 @@ els.menuNewGame.addEventListener('click', () => {
   selectedId = null;
   if (selectMode) exitSelectMode();
   else renderBoard();
+  maybeAutoOpenDrawer();
 });
 els.menuChangeDeck.addEventListener('click', () => {
   Storage.clearDeck();
   els.menuSheet.hidden = true;
   if (selectMode) exitSelectMode();
+  closeDrawer();
   document.body.classList.remove('board-active');
   els.boardView.hidden = true;
   els.input.value = '';
