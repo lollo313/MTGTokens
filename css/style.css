@@ -8,7 +8,7 @@
        --overlay           velatura scura: scrim, pillole, badge (Overlay)
        --tray              vetro chiaro traslucido: tray, pannelli (Tray Opacity)
        --placeholder       placeholder nei campi chiari
-       --selection         bordo di selezione multipla
+       --golden-orange     selezione multipla e focus (variabile Figma "Golden Orange")
        --divider           linee di separazione su fondo scuro
        --border-soft       bordi tenui su fondo scuro
        --error             messaggi di errore
@@ -30,7 +30,7 @@
     --overlay: rgba(0, 0, 0, 0.8);
     --tray: rgba(255, 255, 255, 0.2);
     --placeholder: rgba(36, 36, 36, 0.5);
-    --selection: #f1a208;
+    --golden-orange: #f1a208;
     --pacific-blue: #5eb1bf;
     --divider: rgba(226, 226, 226, 0.2);
     --border-soft: rgba(226, 226, 226, 0.35);
@@ -97,8 +97,14 @@ button:not(:disabled):active {
 }
 
 textarea:focus, input[type="text"]:focus, button:focus-visible {
-    outline: 2px solid var(--selection);
+    outline: 2px solid var(--golden-orange);
     outline-offset: 1px;
+}
+
+/* le icone dei bottoni ereditano il colore del testo via currentColor */
+button svg {
+    display: block;
+    flex-shrink: 0;
 }
 
 /* pillola scura su vetro: bottone base del design */
@@ -426,13 +432,13 @@ summary {
     width: 80px;
     height: 40px;
     flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     border-radius: 999px;
     border: 1px solid var(--border-soft);
     background: var(--overlay);
     color: var(--text-inverted);
-    font-size: 22px;
-    font-weight: 300;
-    line-height: 1;
     padding: 0;
     -webkit-backdrop-filter: blur(2px);
     backdrop-filter: blur(2px);
@@ -642,7 +648,6 @@ summary {
     position: absolute;
     inset: 0;
     border-radius: var(--radius-mini);
-    border: 2px solid transparent;
     overflow: hidden;
     background: var(--text-inverted);
 }
@@ -681,15 +686,14 @@ summary {
     aspect-ratio: var(--card-ratio);
     transform: translate(-50%, -50%) rotate(90deg);
     border-radius: var(--radius-mini);
-    border: 2px solid transparent;
     overflow: hidden;
     background: var(--text-inverted);
 }
 
-/* selezione multipla */
+/* selezione multipla: anello esterno, niente bordo che scopre lo sfondo chiaro */
 .mini.selected .mini-face,
 .mini.selected .mini-rot {
-    border-color: var(--selection);
+    box-shadow: 0 0 0 2px var(--golden-orange);
 }
 
 .mini-badge {
