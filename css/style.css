@@ -367,6 +367,10 @@ summary {
     background: none;
     padding: 0;
     overflow: visible;
+    /* eccezione al "solo transform/opacity": qui l'altezza della riga
+       è ciò che spinge le righe successive, ottenendo l'effetto di
+       traslazione della pila senza calcoli di posizione in JS */
+    transition: height 0.2s ease;
 }
 
 .play-card.selected {
@@ -490,6 +494,12 @@ summary {
     background: var(--text-inverted);
     box-shadow: var(--shadow-card);
     overflow: hidden;
+    transition: opacity 0.15s ease;
+}
+
+/* dissolvenza incrociata quando il token selezionato cambia */
+.center-card.fade-out {
+    opacity: 0;
 }
 
 .center-card img {
@@ -639,6 +649,12 @@ summary {
     /* tolleranza verticale: anello hover e badge non vengono tagliati */
     padding: 4px 28px 8px;
     scrollbar-width: none;
+    transition: opacity 0.15s ease;
+}
+
+/* dissolvenza incrociata quando il token selezionato cambia */
+.tray-grid.fade-out {
+    opacity: 0;
 }
 
 .tray-grid::-webkit-scrollbar {

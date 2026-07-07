@@ -62,6 +62,25 @@ let selectedInstances = new Set();
 // Editor forza/costituzione: { dp, dt, targets: [indici], replace: bool } | null
 let editor = null;
 
+const REDUCE_MOTION = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+// Dissolvenza incrociata: solo quando il token mostrato cambia davvero
+// (non su tap, contatori o istanze dello stesso token, che restano istantanei).
+function crossfade(el, timerKey, newId, lastId, apply) {
+  const isSwitch = lastId !== undefined && lastId !== null && newId !== null && newId !== lastId;
+  if (!isSwitch || REDUCE_MOTION) { apply(); return; }
+  clearTimeout(crossfade.timers[timerKey]);
+  el.classList.add('fade-out');
+  crossfade.timers[timerKey] = setTimeout(() => {
+    apply();
+    el.classList.remove('fade-out');
+  }, 150);
+}
+crossfade.timers = {};
+
+let lastCenterTokenId; // undefined finché non c'è stato un primo render
+let lastTrayTokenId;
+
 function setStatus(message, isError = false) {
   els.status.textContent = message;
   els.status.classList.toggle('error', isError);
@@ -172,61 +191,74 @@ function renderStack() {
 // --- carta selezionata al centro ---
 function renderCenter() {
   const t = selectedId ? tokenById(selectedId) : null;
-  if (!t) {
-    els.centerCard.hidden = true;
-    els.centerEmpty.hidden = false;
-    return;
-  }
-  els.centerEmpty.hidden = true;
-  els.centerCard.hidden = false;
-  els.centerName.textContent = t.name;
-  els.centerName.hidden = Boolean(t.image); // il nome è già stampato sulla carta
-  els.centerCount.textContent = Storage.total(t.id);
-  if (t.image) { els.centerImg.src = t.image; els.centerImg.style.display = ''; }
-  else { els.centerImg.style.display = 'none'; }
+  const newId = t ? t.id : null;
+
+  const apply = () => {
+    if (!t) {
+      els.centerCard.hidden = true;
+      els.centerEmpty.hidden = false;
+    } else {
+      els.centerEmpty.hidden = true;
+      els.centerCard.hidden = false;
+      els.centerName.textContent = t.name;
+      els.centerName.hidden = Boolean(t.image); // il nome è già stampato sulla carta
+      els.centerCount.textContent = Storage.total(t.id);
+      if (t.image) { els.centerImg.src = t.image; els.centerImg.style.display = ''; }
+      else { els.centerImg.style.display = 'none'; }
+    }
+    lastCenterTokenId = newId;
+  };
+
+  crossfade(els.centerCard, 'center', newId, lastCenterTokenId, apply);
 }
 
 // --- tray: una mini-carta per istanza ---
 function renderTray() {
   const t = selectedId ? tokenById(selectedId) : null;
   els.tray.hidden = !t;
-  if (!t) return;
+  const newId = t ? t.id : null;
+  if (!t) { lastTrayTokenId = null; return; }
 
-  const instances = Storage.getInstances(t.id);
+  const apply = () => {
+    const instances = Storage.getInstances(t.id);
 
-  els.trayHeaderNormal.hidden = Boolean(selectMode);
-  els.trayHeaderSelect.hidden = !selectMode;
-  els.btnClearCounters.hidden = Boolean(selectMode) || !instances.some(i => i.p || i.t);
+    els.trayHeaderNormal.hidden = Boolean(selectMode);
+    els.trayHeaderSelect.hidden = !selectMode;
+    els.btnClearCounters.hidden = Boolean(selectMode) || !instances.some(i => i.p || i.t);
 
-  els.trayGrid.innerHTML = '';
-  instances.forEach((inst, i) => {
-    const mini = document.createElement('button');
-    mini.className = 'mini'
-      + (inst.tapped ? ' tapped' : '')
-      + (selectedInstances.has(i) ? ' selected' : '');
-    mini.dataset.index = i;
-    mini.setAttribute('aria-label', inst.tapped
-      ? `${t.name} tappato: tocca per stappare`
-      : `${t.name} stappato: tocca per tappare`);
+    els.trayGrid.innerHTML = '';
+    instances.forEach((inst, i) => {
+      const mini = document.createElement('button');
+      mini.className = 'mini'
+        + (inst.tapped ? ' tapped' : '')
+        + (selectedInstances.has(i) ? ' selected' : '');
+      mini.dataset.index = i;
+      mini.setAttribute('aria-label', inst.tapped
+        ? `${t.name} tappato: tocca per stappare`
+        : `${t.name} stappato: tocca per tappare`);
 
-    const face = document.createElement('span');
-    face.className = inst.tapped ? 'mini-rot' : 'mini-face';
-    if (t.image) {
-      const img = document.createElement('img');
-      img.loading = 'lazy'; img.alt = ''; img.src = t.image;
-      face.appendChild(img);
-    }
-    mini.appendChild(face);
+      const face = document.createElement('span');
+      face.className = inst.tapped ? 'mini-rot' : 'mini-face';
+      if (t.image) {
+        const img = document.createElement('img');
+        img.loading = 'lazy'; img.alt = ''; img.src = t.image;
+        face.appendChild(img);
+      }
+      mini.appendChild(face);
 
-    if (inst.p || inst.t) {
-      const badge = document.createElement('span');
-      badge.className = 'mini-badge';
-      badge.dataset.badge = '1';
-      badge.textContent = `${fmtMod(inst.p)}/${fmtMod(inst.t)}`;
-      mini.appendChild(badge);
-    }
-    els.trayGrid.appendChild(mini);
-  });
+      if (inst.p || inst.t) {
+        const badge = document.createElement('span');
+        badge.className = 'mini-badge';
+        badge.dataset.badge = '1';
+        badge.textContent = `${fmtMod(inst.p)}/${fmtMod(inst.t)}`;
+        mini.appendChild(badge);
+      }
+      els.trayGrid.appendChild(mini);
+    });
+    lastTrayTokenId = newId;
+  };
+
+  crossfade(els.trayGrid, 'tray', newId, lastTrayTokenId, apply);
 }
 
 // tocco su una mini: tap/untap, oppure selezione in modalità selezione;
