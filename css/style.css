@@ -31,6 +31,7 @@
     --tray: rgba(255, 255, 255, 0.2);
     --placeholder: rgba(36, 36, 36, 0.5);
     --selection: #f1a208;
+    --pacific-blue: #5eb1bf;
     --divider: rgba(226, 226, 226, 0.2);
     --border-soft: rgba(226, 226, 226, 0.35);
     --error: #e08a80;
@@ -68,10 +69,11 @@ html, body {
     margin: 0;
     min-height: 100vh;
     background-color: var(--bg);
-    background-image: url('../img/bg-texture.png');
-    background-size: cover;
+    /* texture in multiply sopra il fade verticale bg -> pacific blue */
+    background-image: url('../img/bg-texture.png'), linear-gradient(to bottom, var(--bg), var(--pacific-blue));
+    background-size: cover, 100% 100%;
     background-repeat: no-repeat;
-    background-blend-mode: multiply;
+    background-blend-mode: multiply, normal;
     color: var(--text-inverted);
     font-family: var(--font-ui);
     -webkit-font-smoothing: antialiased;
@@ -786,31 +788,34 @@ summary {
     color: var(--text-inverted);
 }
 
-/* --- overlay ricerca --- */
+/* --- overlay ricerca: barra orizzontale in alto, sotto resta spazio
+       per la tastiera in landscape --- */
 .search-overlay {
     position: absolute;
     inset: 0;
     z-index: 40;
     background: var(--overlay);
     display: flex;
-    align-items: stretch;
-    gap: 14px;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
 }
 
 .search-panel {
-    width: clamp(300px, 46%, 439px);
-    height: 100%;
+    width: 100%;
+    flex-shrink: 0;
     background: var(--tray);
     -webkit-backdrop-filter: blur(6px);
     backdrop-filter: blur(6px);
     padding: 24px;
-    border-radius: 0 var(--radius-card) var(--radius-card) 0;
+    border-radius: 0 0 var(--radius-card) var(--radius-card);
     display: flex;
-    flex-direction: column;
+    align-items: center;
     gap: 24px;
 }
 
 .search-panel input {
+    width: clamp(160px, 29%, 275px);
     background: var(--text-inverted);
     border: none;
     color: var(--text);
@@ -822,13 +827,11 @@ summary {
 
 .search-grid {
     flex: 1;
-    min-height: 0;
-    overflow-y: auto;
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    grid-auto-rows: max-content;
-    align-content: start;
+    min-width: 0;
+    display: flex;
     gap: 12px;
+    overflow-x: auto;
+    overflow-y: hidden;
     scrollbar-width: none;
 }
 
@@ -841,10 +844,12 @@ summary {
     border: none;
     background: var(--text-inverted);
     color: var(--text);
-    border-radius: var(--radius-slot);
+    border-radius: var(--radius-box);
     overflow: hidden;
     padding: 0;
+    height: 98px;
     aspect-ratio: var(--card-ratio);
+    flex-shrink: 0;
 }
 
 .search-card:not(:disabled):hover {
@@ -865,24 +870,26 @@ summary {
     display: flex;
     align-items: flex-start;
     justify-content: center;
-    padding: 16px 8px;
-    font-size: 0.8rem;
+    padding: 6px 4px;
+    font-size: 0.6rem;
+    overflow: hidden;
 }
 
 .search-close {
-    align-self: flex-start;
-    margin-top: 10px;
+    align-self: center;
     padding: 8px 24px;
-    border: none;
+    border: 1px solid var(--text-inverted);
     border-radius: 999px;
-    background: var(--text-inverted);
-    color: var(--text);
+    background: var(--overlay);
+    color: var(--text-inverted);
     font-size: 1rem;
     line-height: 1.3;
+    -webkit-backdrop-filter: blur(2px);
+    backdrop-filter: blur(2px);
 }
 
 .search-close:not(:disabled):hover {
-    background: #ffffff;
+    background: rgba(0, 0, 0, 0.95);
 }
 
 /* --- modali (menu) --- */
@@ -944,9 +951,9 @@ summary {
     inset: 0;
     z-index: 100;
     background-color: var(--bg);
-    background-image: url('../img/bg-texture.png');
-    background-size: cover;
-    background-blend-mode: multiply;
+    background-image: url('../img/bg-texture.png'), linear-gradient(to bottom, var(--bg), var(--pacific-blue));
+    background-size: cover, 100% 100%;
+    background-blend-mode: multiply, normal;
     color: var(--text-inverted);
     align-items: center;
     justify-content: center;
