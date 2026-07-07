@@ -345,7 +345,9 @@ summary {
     display: flex;
     flex-direction: column;
     gap: 0;
-    padding-block: 32px 12px;
+    /* overflow-y:auto rende scroll container anche l'asse orizzontale:
+       2px di tolleranza laterale per non tagliare l'anello di selezione */
+    padding: 32px 2px 12px;
     scrollbar-width: none;
 }
 
