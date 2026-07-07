@@ -632,7 +632,7 @@ summary {
     align-content: start;
     column-gap: clamp(20px, 17%, 56px);
     row-gap: 10px;
-    /* tolleranza verticale: traslazione hover e badge non vengono tagliati */
+    /* tolleranza verticale: anello hover e badge non vengono tagliati */
     padding: 4px 28px 8px;
     scrollbar-width: none;
 }
@@ -661,7 +661,12 @@ summary {
 }
 
 .mini:not(:disabled):hover {
-    transform: translateY(-2px);
+    transform: scale(0.98);
+}
+
+.mini:not(:disabled):active {
+    transform: scale(0.95);
+    transition-duration: 0.1s;
 }
 
 .mini:not(.selected):not(:disabled):hover .mini-face,
@@ -850,7 +855,7 @@ summary {
     gap: 12px;
     overflow-x: auto;
     overflow-y: hidden;
-    /* tolleranza per la traslazione hover delle carte */
+    /* tolleranza per l'anello hover delle carte */
     padding-block: 4px;
     scrollbar-width: none;
 }
@@ -873,8 +878,13 @@ summary {
 }
 
 .search-card:not(:disabled):hover {
-    transform: translateY(-2px);
+    transform: scale(0.98);
     box-shadow: 0 0 0 1px var(--hover-ring);
+}
+
+.search-card:not(:disabled):active {
+    transform: scale(0.95);
+    transition-duration: 0.1s;
 }
 
 .search-card img {
