@@ -3,13 +3,19 @@
 
 const els = {
   // import
+  deckTitle: document.getElementById('deck-title'),
   input: document.getElementById('decklist-input'),
   btnAnalyze: document.getElementById('btn-analyze'),
   btnClearInput: document.getElementById('btn-clear-input'),
-  archidektId: document.getElementById('archidekt-id'),
-  btnArchidekt: document.getElementById('btn-archidekt'),
   status: document.getElementById('status'),
   importView: document.getElementById('import-view'),
+  // ultimi mazzi
+  recentList: document.getElementById('recent-list'),
+  recentEmpty: document.getElementById('recent-empty'),
+  btnClearRecent: document.getElementById('btn-clear-recent'),
+  confirmClear: document.getElementById('confirm-clear-recent'),
+  confirmClearYes: document.getElementById('confirm-clear-yes'),
+  confirmClearNo: document.getElementById('confirm-clear-no'),
   // board
   boardView: document.getElementById('board-view'),
   stack: document.getElementById('stack'),
@@ -48,6 +54,12 @@ const els = {
   searchClose: document.getElementById('search-close'),
   searchModeDeck: document.getElementById('search-mode-deck'),
   searchModeScryfall: document.getElementById('search-mode-scryfall'),
+  // switch vista + riassunto
+  viewEdit: document.getElementById('view-edit'),
+  viewSummary: document.getElementById('view-summary'),
+  summary: document.getElementById('summary'),
+  summaryGrid: document.getElementById('summary-grid'),
+  summaryEmpty: document.getElementById('summary-empty'),
   // menu
   btnMenu: document.getElementById('btn-menu'),
   menuSheet: document.getElementById('menu-sheet'),
@@ -157,7 +169,6 @@ function setStatus(message, isError = false) {
 }
 function setBusy(busy) {
   els.btnAnalyze.disabled = busy;
-  els.btnArchidekt.disabled = busy;
 }
 
 // --- parsing decklist ---
@@ -183,7 +194,10 @@ async function analyzeDeck(cardNames) {
       setStatus(`Analizzate ${cardCount ?? cardNames.length} carte: nessun token generato da questo mazzo.`);
       return;
     }
-    Storage.saveDeck(cardNames, tokens);
+    const title = els.deckTitle.value.trim();
+    Storage.saveDeck(cardNames, tokens, title);
+    Storage.saveRecentDeck(title, cardNames, tokens);
+    renderRecents();
     enterBoard(tokens);
   } catch (err) {
     console.error(err);
@@ -200,7 +214,7 @@ function enterBoard(tokens) {
   els.boardView.hidden = false;
   selectedId = null;
   renderBoard();
-  maybeAutoOpenDrawer();
+  setView('edit');
 }
 
 function tokenById(id) { return allTokens.find(t => t.id === id); }
@@ -477,6 +491,7 @@ els.counterEditor.addEventListener('click', e => {
 // Escape: annulla l'editor senza applicare, oppure esce dalla selezione
 document.addEventListener('keydown', e => {
   if (e.key !== 'Escape') return;
+  if (!els.confirmClear.hidden) { els.confirmClear.hidden = true; return; }
   if (!els.counterEditor.hidden) { closeEditor(); return; }
   if (selectMode) exitSelectMode();
 });
@@ -642,12 +657,6 @@ function toggleDrawer() {
   else openDrawer();
 }
 
-// senza token in gioco (mazzo appena aperto, nuova partita) il drawer si apre
-// da solo in portrait, così sono subito visibili la lista e il "+"
-function maybeAutoOpenDrawer() {
-  if (isPortrait() && inPlayTokens().length === 0) openDrawer();
-}
-
 els.drawerHandle.addEventListener('click', toggleDrawer);
 els.drawerScrim.addEventListener('click', closeDrawer);
 // ruotando il dispositivo il drawer perde senso: reset dello stato
@@ -681,6 +690,80 @@ portraitMQ.addEventListener('change', closeDrawer);
   }, { passive: true });
 })();
 
+// --- switch vista: modifica <-> riassunto ---
+function summaryActive() {
+  return els.boardView.classList.contains('summary-active');
+}
+
+function setView(view) {
+  const summary = view === 'summary';
+  els.boardView.classList.toggle('summary-active', summary);
+  els.viewEdit.classList.toggle('active', !summary);
+  els.viewSummary.classList.toggle('active', summary);
+  els.viewEdit.setAttribute('aria-pressed', String(!summary));
+  els.viewSummary.setAttribute('aria-pressed', String(summary));
+  els.summary.hidden = !summary;
+  if (summary) { closeDrawer(); renderSummary(); }
+}
+
+// Griglia riassuntiva: per ogni token in gioco, la carta dritta (stappate)
+// con affianco la stessa carta girata di 90° (tappate), ciascuna col conteggio.
+function renderSummary() {
+  const playing = inPlayTokens();
+  els.summaryGrid.innerHTML = '';
+  els.summaryEmpty.hidden = playing.length > 0;
+
+  playing.forEach(t => {
+    const instances = Storage.getInstances(t.id);
+    const tapped = instances.filter(i => i.tapped).length;
+    const untapped = instances.length - tapped;
+
+    const card = document.createElement('div');
+    card.className = 'summary-card';
+
+    // carta girata (tappate), dietro a destra
+    const spine = document.createElement('span');
+    spine.className = 'summary-spine';
+    const spineInner = document.createElement('span');
+    spineInner.className = 'summary-spine-inner';
+    if (t.image) {
+      const si = document.createElement('img');
+      si.loading = 'lazy'; si.alt = ''; si.src = t.image;
+      spineInner.appendChild(si);
+    }
+    spine.appendChild(spineInner);
+    const tapCount = document.createElement('span');
+    tapCount.className = 'summary-count summary-count-tap';
+    tapCount.textContent = tapped;
+    spine.appendChild(tapCount);
+    card.appendChild(spine);
+
+    // carta dritta (stappate), davanti a sinistra
+    const face = document.createElement('span');
+    face.className = 'summary-face';
+    if (t.image) {
+      const fi = document.createElement('img');
+      fi.loading = 'lazy'; fi.alt = t.name; fi.src = t.image;
+      face.appendChild(fi);
+    } else {
+      const fb = document.createElement('span');
+      fb.className = 'summary-fallback';
+      fb.textContent = t.name;
+      face.appendChild(fb);
+    }
+    const upCount = document.createElement('span');
+    upCount.className = 'summary-count';
+    upCount.textContent = untapped;
+    face.appendChild(upCount);
+    card.appendChild(face);
+
+    els.summaryGrid.appendChild(card);
+  });
+}
+
+els.viewEdit.addEventListener('click', () => setView('edit'));
+els.viewSummary.addEventListener('click', () => setView('summary'));
+
 // --- menu ---
 els.btnMenu.addEventListener('click', () => { els.menuSheet.hidden = false; });
 els.menuClose.addEventListener('click', () => { els.menuSheet.hidden = true; });
@@ -693,7 +776,7 @@ els.menuNewGame.addEventListener('click', () => {
   selectedId = null;
   if (selectMode) exitSelectMode();
   else renderBoard();
-  maybeAutoOpenDrawer();
+  if (summaryActive()) renderSummary();
 });
 els.menuChangeDeck.addEventListener('click', () => {
   Storage.clearDeck();
@@ -702,42 +785,107 @@ els.menuChangeDeck.addEventListener('click', () => {
   closeDrawer();
   document.body.classList.remove('board-active');
   els.boardView.hidden = true;
+  els.deckTitle.value = '';
   els.input.value = '';
+  renderRecents();
   setStatus('Mazzo rimosso. Incolla una nuova decklist per continuare.');
 });
 
 // --- import handlers ---
 els.btnAnalyze.addEventListener('click', () => analyzeDeck(parseDecklist(els.input.value)));
-els.btnClearInput.addEventListener('click', () => { els.input.value = ''; setStatus(''); });
+els.btnClearInput.addEventListener('click', () => {
+  els.deckTitle.value = '';
+  els.input.value = '';
+  setStatus('');
+});
 
-async function importFromArchidekt(deckId) {
-  setBusy(true);
-  setStatus('Provo a importare il mazzo da Archidekt...');
+// --- ultimi mazzi ---
+function fmtRecentDate(ts) {
+  if (!ts) return '';
   try {
-    const res = await fetch(`https://archidekt.com/api/decks/${deckId}/`);
-    if (!res.ok) throw new Error(`Archidekt errore ${res.status}`);
-    const data = await res.json();
-    const cardNames = (data.cards || []).map(c => c.card?.oracleCard?.name).filter(Boolean);
-    if (cardNames.length === 0) throw new Error('Nessuna carta trovata.');
-    els.input.value = cardNames.join('\n');
-    await analyzeDeck(cardNames);
-  } catch (err) {
-    console.error(err);
-    setStatus('Import da Archidekt non riuscito (probabile blocco CORS). Copia la decklist e incollala sopra.', true);
-  } finally {
-    setBusy(false);
+    return new Date(ts).toLocaleDateString('it-IT', { day: 'numeric', month: 'short' });
+  } catch (e) {
+    return '';
   }
 }
-els.btnArchidekt.addEventListener('click', () => {
-  const id = els.archidektId.value.trim();
-  if (!id) { setStatus('Inserisci un ID mazzo Archidekt.', true); return; }
-  importFromArchidekt(id);
+
+function renderRecents() {
+  const decks = Storage.getRecentDecks();
+  els.recentList.innerHTML = '';
+  els.recentEmpty.hidden = decks.length > 0;
+  els.btnClearRecent.disabled = decks.length === 0;
+
+  decks.forEach(d => {
+    const item = document.createElement('button');
+    item.className = 'recent-item';
+    item.dataset.id = d.id;
+
+    // wrapper interno: è qui che vive il flex (il <button> resta un blocco)
+    const inner = document.createElement('span');
+    inner.className = 'recent-inner';
+
+    const thumb = document.createElement('span');
+    thumb.className = 'recent-thumb';
+    const firstImg = (d.tokens || []).find(t => t.image);
+    if (firstImg) {
+      const img = document.createElement('img');
+      img.loading = 'lazy'; img.alt = ''; img.src = firstImg.image;
+      thumb.appendChild(img);
+    }
+    inner.appendChild(thumb);
+
+    const info = document.createElement('span');
+    info.className = 'recent-info';
+    const title = document.createElement('span');
+    title.className = 'recent-title';
+    title.textContent = d.title || 'Mazzo senza titolo';
+    const meta = document.createElement('span');
+    meta.className = 'recent-meta';
+    const n = (d.tokens || []).length;
+    meta.textContent = [`${n} token`, fmtRecentDate(d.savedAt)].filter(Boolean).join(' · ');
+    info.appendChild(title);
+    info.appendChild(meta);
+    inner.appendChild(info);
+
+    item.appendChild(inner);
+    item.addEventListener('click', () => loadRecentDeck(d.id));
+    els.recentList.appendChild(item);
+  });
+}
+
+// tap su un mazzo recente: diventa il mazzo attivo (board pulita) e apre la board
+function loadRecentDeck(id) {
+  const d = Storage.getRecentDeck(id);
+  if (!d) return;
+  Storage.saveDeck(d.cardNames, d.tokens, d.title);
+  Storage.touchRecentDeck(id); // riportalo in cima allo storico
+  els.deckTitle.value = d.title || '';
+  els.input.value = d.cardNames.join('\n');
+  renderRecents();
+  enterBoard(d.tokens);
+}
+
+els.btnClearRecent.addEventListener('click', () => {
+  if (Storage.getRecentDecks().length === 0) return;
+  els.confirmClear.hidden = false;
+});
+els.confirmClearNo.addEventListener('click', () => { els.confirmClear.hidden = true; });
+els.confirmClearYes.addEventListener('click', () => {
+  Storage.clearRecentDecks();
+  els.confirmClear.hidden = true;
+  renderRecents();
+});
+// tap sullo scrim (fuori dal riquadro) = annulla
+els.confirmClear.addEventListener('click', e => {
+  if (e.target === els.confirmClear) els.confirmClear.hidden = true;
 });
 
 // --- ripristino sessione ---
 (function init() {
+  renderRecents();
   const deck = Storage.loadDeck();
   if (deck && deck.tokens.length > 0) {
+    els.deckTitle.value = deck.title || '';
     els.input.value = deck.cardNames.join('\n');
     enterBoard(deck.tokens);
   }

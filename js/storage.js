@@ -10,9 +10,15 @@ const Storage = {
   KEYS: {
     DECK_HASH: 'tt_deck_hash',
     DECK_CARDS: 'tt_deck_cards',   // nomi carta del mazzo attivo
+    DECK_TITLE: 'tt_deck_title',   // titolo del mazzo attivo (dato dall'utente)
     TOKENS: 'tt_tokens',           // token risolti (id, nome, immagine) per il mazzo attivo
     STATE: 'tt_state'              // stato di gioco { tokenId: { instances: [...] } }
   },
+
+  // Storico dei mazzi importati. Chiave FUORI da KEYS di proposito: "Cambia mazzo"
+  // (clearDeck) itera KEYS e non deve cancellare lo storico.
+  RECENT_KEY: 'tt_recent_decks',
+  RECENT_MAX: 24,
 
   // hash semplice e stabile della decklist, per capire se è "lo stesso mazzo"
   // ed evitare di richiamare Scryfall se non serve.
@@ -25,10 +31,11 @@ const Storage = {
     return String(hash);
   },
 
-  saveDeck(cardNames, tokens) {
+  saveDeck(cardNames, tokens, title = '') {
     const hash = this.hashList(cardNames);
     localStorage.setItem(this.KEYS.DECK_HASH, hash);
     localStorage.setItem(this.KEYS.DECK_CARDS, JSON.stringify(cardNames));
+    localStorage.setItem(this.KEYS.DECK_TITLE, title);
     localStorage.setItem(this.KEYS.TOKENS, JSON.stringify(tokens));
     // Stato iniziale: nessun token in gioco.
     localStorage.setItem(this.KEYS.STATE, JSON.stringify({}));
@@ -47,10 +54,52 @@ const Storage = {
     if (!tokensRaw || !cardsRaw) return null;
     return {
       hash: localStorage.getItem(this.KEYS.DECK_HASH),
+      title: localStorage.getItem(this.KEYS.DECK_TITLE) || '',
       cardNames: JSON.parse(cardsRaw),
       tokens: JSON.parse(tokensRaw),
       state: this._loadState()
     };
+  },
+
+  // --- storico mazzi recenti ---
+  // Ogni voce: { id (hash decklist), title, cardNames, tokens, savedAt }.
+  // Lo stato di gioco NON viene salvato qui: riaprire un mazzo recente
+  // ricomincia da una board pulita.
+  getRecentDecks() {
+    try {
+      const arr = JSON.parse(localStorage.getItem(this.RECENT_KEY) || '[]');
+      if (!Array.isArray(arr)) return [];
+      return arr.slice().sort((a, b) => (b.savedAt || 0) - (a.savedAt || 0));
+    } catch (e) {
+      return [];
+    }
+  },
+
+  getRecentDeck(id) {
+    return this.getRecentDecks().find(d => d.id === id) || null;
+  },
+
+  // Inserisce/aggiorna un mazzo nello storico (dedup per hash della decklist)
+  // e lo porta in cima. Tiene al massimo RECENT_MAX voci.
+  saveRecentDeck(title, cardNames, tokens) {
+    const id = this.hashList(cardNames);
+    const list = this.getRecentDecks().filter(d => d.id !== id);
+    list.unshift({ id, title: title || '', cardNames, tokens, savedAt: Date.now() });
+    localStorage.setItem(this.RECENT_KEY, JSON.stringify(list.slice(0, this.RECENT_MAX)));
+    return id;
+  },
+
+  // Aggiorna solo il timestamp di un mazzo riaperto, per riportarlo in cima.
+  touchRecentDeck(id) {
+    const list = this.getRecentDecks();
+    const entry = list.find(d => d.id === id);
+    if (!entry) return;
+    entry.savedAt = Date.now();
+    localStorage.setItem(this.RECENT_KEY, JSON.stringify(list));
+  },
+
+  clearRecentDecks() {
+    localStorage.removeItem(this.RECENT_KEY);
   },
 
   _loadState() {

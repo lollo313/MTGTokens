@@ -20,40 +20,66 @@
 
 <!-- ============ VISTA 1: IMPORT ============ -->
 <section id="import-view">
-  <header class="app-header">
-    <h1>Token Tracker</h1>
-    <p>Importa il mazzo, individua i token esatti, tienili sotto controllo durante la partita.</p>
-  </header>
+  <div class="import-split">
+    <!-- Sinistra (landscape) / Sopra (portrait): form di import -->
+    <div class="import-form">
+      <div class="import-head">
+        <h1>Token Tracker</h1>
+        <p>Importa il mazzo, individua i token esatti, tienili sotto controllo durante la partita.</p>
+      </div>
 
-  <main>
-    <section class="panel">
-      <h2>1. Importa il mazzo</h2>
-      <textarea id="decklist-input" rows="6" placeholder="1 Bitterblossom&#10;1 Elspeth, Sun's Champion&#10;1 Lingering Souls&#10;..."></textarea>
+      <label class="field-label" for="deck-title">Titolo del mazzo</label>
+      <input type="text" id="deck-title" placeholder="Es. Elspeth Tokens" autocomplete="off">
+
+      <label class="field-label" for="decklist-input">Decklist</label>
+      <textarea id="decklist-input" placeholder="1 Bitterblossom&#10;1 Elspeth, Sun's Champion&#10;1 Lingering Souls&#10;..."></textarea>
       <p class="hint">Incolla la decklist (una carta per riga, il numero iniziale è opzionale). Set e numero collezione vengono ignorati.</p>
+
       <div class="row">
         <button class="primary" id="btn-analyze">Analizza mazzo</button>
         <button class="ghost" id="btn-clear-input">Svuota</button>
       </div>
 
-      <details style="margin-top: 0.9rem;">
-        <summary>Oppure importa da un ID mazzo Archidekt (sperimentale)</summary>
-        <div class="row">
-          <input type="text" id="archidekt-id" placeholder="es. 365563 — dal link del mazzo">
-          <button id="btn-archidekt">Importa</button>
-        </div>
-        <p class="hint">L'API di Archidekt non è documentata ufficialmente e potrebbe bloccare le richieste dal browser (CORS). Se non funziona, copia la decklist da Archidekt e incollala sopra.</p>
-      </details>
-
       <p id="status" role="status"></p>
-    </section>
-  </main>
+    </div>
+
+    <!-- Destra (landscape) / Sotto (portrait): ultimi mazzi -->
+    <aside class="import-recent">
+      <div class="recent-head">
+        <h2>Ultimi mazzi</h2>
+        <button id="btn-clear-recent" class="recent-clear">Pulisci</button>
+      </div>
+      <p id="recent-empty" class="recent-empty" hidden>Nessun mazzo salvato. Analizza una decklist per ritrovarla qui.</p>
+      <div id="recent-list" class="recent-list"></div>
+    </aside>
+  </div>
 </section>
+
+<!-- Conferma pulizia dello storico mazzi -->
+<div id="confirm-clear-recent" class="modal" hidden>
+  <div class="modal-box">
+    <div class="modal-title">Cancellare tutti i mazzi recenti?</div>
+    <button id="confirm-clear-yes" class="menu-item">Sì, cancella tutto</button>
+    <button id="confirm-clear-no" class="modal-cancel">Annulla</button>
+  </div>
+</div>
 
 <!-- ============ VISTA 2: BOARD ============ -->
 <section id="board-view" hidden>
-  <button id="btn-menu" class="menu-btn" aria-label="Menu">
-    <span></span><span></span><span></span>
-  </button>
+  <!-- Controlli in alto a destra: switch vista (modifica / riassunto) + menu -->
+  <div class="board-controls">
+    <div class="view-switch" role="group" aria-label="Vista">
+      <button id="view-edit" class="view-switch-btn active" aria-label="Modifica" aria-pressed="true">
+        <svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true"><rect x="2.5" y="3.5" width="15" height="13" rx="2.5" fill="none" stroke="currentColor" stroke-width="2"/><line x1="8" y1="3.5" x2="8" y2="16.5" stroke="currentColor" stroke-width="2"/></svg>
+      </button>
+      <button id="view-summary" class="view-switch-btn" aria-label="Riassunto" aria-pressed="false">
+        <svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M2 2h7v7H2V2Zm9 0h7v7h-7V2ZM2 11h7v7H2v-7Zm9 0h7v7h-7v-7Z"/></svg>
+      </button>
+    </div>
+    <button id="btn-menu" class="menu-btn" aria-label="Menu">
+      <span></span><span></span><span></span>
+    </button>
+  </div>
 
   <div class="board">
     <!-- Colonna sinistra: pila dei token in gioco -->
@@ -99,6 +125,13 @@
     </div>
   </div>
 
+  <!-- Riassunto: griglia di tutti i token in gioco (stappate = carta dritta,
+       tappate = carta girata di 90°), con i rispettivi contatori -->
+  <div id="summary" class="summary" hidden>
+    <div id="summary-grid" class="summary-grid"></div>
+    <p id="summary-empty" class="summary-empty" hidden>Nessun token in gioco.</p>
+  </div>
+
   <!-- Portrait: maniglia sul bordo sinistro per aprire il drawer dei token in gioco -->
   <button id="drawer-handle" class="drawer-handle" aria-label="Mostra i token in gioco" aria-expanded="false">
     <span class="drawer-handle-grip"></span>
@@ -131,11 +164,13 @@
   <!-- Overlay ricerca -->
   <div id="search-overlay" class="search-overlay" hidden>
     <div class="search-panel">
-      <div class="search-toggle" role="group" aria-label="Sorgente della ricerca">
-        <button id="search-mode-deck" class="search-toggle-btn">Mazzo</button>
-        <button id="search-mode-scryfall" class="search-toggle-btn">Scryfall</button>
+      <div class="search-left">
+        <input type="text" id="search-input" placeholder="Cerca" autocomplete="off">
+        <div class="search-toggle" role="group" aria-label="Sorgente della ricerca">
+          <button id="search-mode-deck" class="search-toggle-btn">Mazzo</button>
+          <button id="search-mode-scryfall" class="search-toggle-btn">Scryfall</button>
+        </div>
       </div>
-      <input type="text" id="search-input" placeholder="Cerca" autocomplete="off">
       <div id="search-grid" class="search-grid"></div>
     </div>
     <button id="search-close" class="search-close" aria-label="Chiudi">

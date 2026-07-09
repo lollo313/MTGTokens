@@ -110,31 +110,29 @@ button svg {
     flex-shrink: 0;
 }
 
-/* pillola scura su vetro: bottone base del design */
+/* pillola chiara: bottone base del design (fondo #e2e2e2, testo scuro, ombra) */
 .pill {
     display: inline-flex;
     align-items: center;
     justify-content: center;
     padding: 8px 16px;
     border-radius: 999px;
-    border: 1px solid var(--text-inverted);
-    background: var(--overlay);
-    color: var(--text-inverted);
+    border: none;
+    background: var(--text-inverted);
+    color: var(--text);
     font-size: 0.75rem;
     line-height: 1;
     white-space: nowrap;
-    -webkit-backdrop-filter: blur(2px);
-    backdrop-filter: blur(2px);
+    box-shadow: 0 2px 2px rgba(0, 0, 0, 0.4);
 }
 
 .pill:not(:disabled):hover {
-    background: rgba(0, 0, 0, 0.95);
+    background: #ffffff;
 }
 
-/* pillola chiara: azione di conferma (Done, primary) */
+/* pillola chiara: alias mantenuto per compatibilità (Done, primary) */
 .pill-light {
     background: var(--text-inverted);
-    border-color: var(--text-inverted);
     color: var(--text);
 }
 
@@ -142,50 +140,229 @@ button svg {
     background: #ffffff;
 }
 
-/* ============ VISTA IMPORT ============ */
+/* ============ VISTA IMPORT (split screen) ============ */
 
+/* Riempie il viewport: due metà affiancate in landscape, impilate in portrait */
 #import-view {
-    padding-bottom: 3rem;
+    min-height: 100vh;
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    padding: clamp(16px, 2.5vw, 32px);
 }
 
-.app-header {
-    padding: 1.75rem 1.25rem 1.25rem;
-    text-align: center;
-    border-bottom: 1px solid var(--divider);
-}
-
-.app-header h1 {
-    font-weight: 600;
-    font-size: 1.8rem;
-    margin: 0;
-    color: var(--text-inverted);
-}
-
-.app-header p {
-    margin: 0.35rem 0 0;
-    color: var(--text-inverted-soft);
-    font-size: 0.9rem;
-}
-
-main {
-    max-width: 720px;
+.import-split {
+    flex: 1;
+    min-height: 0;
+    width: 100%;
+    max-width: 1120px;
     margin: 0 auto;
-    padding: 1.25rem;
+    display: flex;
+    gap: clamp(16px, 2.5vw, 32px);
 }
 
-.panel {
+/* pannello a vetro chiaro, condiviso dalle due metà (come il tray della board) */
+.import-form,
+.import-recent {
     background: var(--tray);
     -webkit-backdrop-filter: blur(6px);
     backdrop-filter: blur(6px);
     border-radius: var(--radius-card);
-    padding: 1.1rem;
+    padding: clamp(16px, 2vw, 24px);
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    min-height: 0;
 }
 
-.panel h2 {
+.import-form { flex: 1 1 58%; }
+.import-recent { flex: 1 1 42%; }
+
+.import-head h1 {
+    font-weight: 600;
+    font-size: 1.6rem;
+    margin: 0;
+    color: var(--text-inverted);
+}
+
+.import-head p {
+    margin: 0.3rem 0 1.1rem;
+    color: var(--text-inverted-soft);
+    font-size: 0.85rem;
+}
+
+.field-label {
+    display: block;
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    color: var(--text-inverted-soft);
+    margin: 0 0 0.35rem;
+}
+
+.import-form .field-label + input,
+.import-form .field-label + textarea {
+    margin-bottom: 0.9rem;
+}
+
+/* la decklist cresce per riempire la colonna in landscape */
+#decklist-input {
+    flex: 1;
+    min-height: 120px;
+    margin-bottom: 0.5rem;
+    resize: none;
+}
+
+.import-form details {
+    margin-top: 0.7rem;
+}
+
+/* --- colonna destra: lista degli ultimi mazzi --- */
+.recent-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-shrink: 0;
+    margin-bottom: 0.9rem;
+}
+
+.recent-head h2 {
     font-size: 1.05rem;
     font-weight: 600;
-    margin: 0 0 0.6rem;
+    margin: 0;
     color: var(--text-inverted);
+}
+
+/* pulsante pulizia: ghost tondeggiante, spento quando lo storico è vuoto */
+.recent-clear {
+    flex-shrink: 0;
+    padding: 0.4rem 0.9rem;
+    border-radius: 999px;
+    border: 1px solid var(--border-soft);
+    background: transparent;
+    color: var(--text-inverted-soft);
+    font-size: 0.8rem;
+    line-height: 1;
+}
+
+.recent-clear:not(:disabled):hover {
+    color: var(--text-inverted);
+    border-color: var(--text-inverted);
+}
+
+.recent-list {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 2px;
+    scrollbar-width: none;
+    overscroll-behavior: contain;
+}
+
+.recent-list::-webkit-scrollbar {
+    display: none;
+}
+
+/* il <button> resta un blocco: Blink non lascia sovrascrivere l'allineamento
+   del suo content-box, quindi il flex vive nel wrapper interno */
+.recent-item {
+    display: block;
+    width: 100%;
+    text-align: left;
+    padding: 8px;
+    border-radius: var(--radius-field);
+    border: none;
+    background: rgba(255, 255, 255, 0.06);
+    color: var(--text-inverted);
+}
+
+.recent-inner {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+}
+
+/* hover carte: anello bianco, nessuna traslazione */
+.recent-item:not(:disabled):hover {
+    background: rgba(255, 255, 255, 0.12);
+    box-shadow: 0 0 0 1px var(--hover-ring);
+}
+
+.recent-thumb {
+    flex-shrink: 0;
+    width: 38px;
+    aspect-ratio: var(--card-ratio);
+    border-radius: var(--radius-mini);
+    overflow: hidden;
+    background: rgba(255, 255, 255, 0.15);
+}
+
+.recent-thumb img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: top;
+}
+
+.recent-info {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.recent-title {
+    font-size: 0.9rem;
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.recent-meta {
+    font-size: 0.72rem;
+    color: var(--text-inverted-soft);
+}
+
+.recent-empty {
+    margin: 0;
+    padding: 8px 2px;
+    color: var(--text-inverted-soft);
+    font-size: 0.85rem;
+}
+
+/* portrait: form sopra, ultimi mazzi sotto; la pagina scorre se serve */
+@media (orientation: portrait) {
+    #import-view {
+        padding: 16px;
+    }
+
+    .import-split {
+        flex: none;
+        flex-direction: column;
+    }
+
+    .import-form,
+    .import-recent {
+        flex: none;
+    }
+
+    /* niente crescita flessibile: altezza guidata dal contenuto, resize verticale */
+    #decklist-input {
+        flex: none;
+        min-height: 150px;
+        resize: vertical;
+    }
+
+    .recent-list {
+        max-height: 42vh;
+    }
 }
 
 textarea, input[type="text"] {
@@ -223,8 +400,10 @@ summary {
     margin-top: 0.7rem;
 }
 
-/* i bottoni della vista import ereditano lo stile pillola */
-#import-view button {
+/* i bottoni d'azione del form import ereditano lo stile pillola.
+   Scope su .row: NON deve toccare i bottoni della lista mazzi (.recent-item,
+   .recent-clear), che hanno stile proprio */
+#import-view .row button {
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -237,21 +416,21 @@ summary {
     line-height: 1;
 }
 
-#import-view button:not(:disabled):hover {
+#import-view .row button:not(:disabled):hover {
     background: rgba(0, 0, 0, 0.95);
 }
 
-#import-view button.primary {
+#import-view .row button.primary {
     background: var(--text-inverted);
     border-color: var(--text-inverted);
     color: var(--text);
 }
 
-#import-view button.primary:not(:disabled):hover {
+#import-view .row button.primary:not(:disabled):hover {
     background: #ffffff;
 }
 
-#import-view button.ghost {
+#import-view .row button.ghost {
     border-color: var(--border-soft);
     color: var(--text-inverted-soft);
     background: transparent;
@@ -277,11 +456,48 @@ summary {
     overflow: hidden;
 }
 
-.menu-btn {
+/* cluster in alto a destra: switch vista + menu */
+.board-controls {
     position: absolute;
     top: 11px;
     right: 18px;
     z-index: 30;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+/* switch vista: controllo segmentato (traccia chiara, attivo scuro) */
+.view-switch {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    height: 44px;
+    padding: 4px;
+    border-radius: 999px;
+    background: var(--text-inverted);
+    box-shadow: 0 2px 2px rgba(0, 0, 0, 0.4);
+}
+
+.view-switch-btn {
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    border: none;
+    background: none;
+    color: var(--text);
+    border-radius: 999px;
+}
+
+.view-switch-btn.active {
+    background: var(--overlay);
+    color: var(--text-inverted);
+}
+
+.menu-btn {
     width: 44px;
     height: 44px;
     border-radius: 50%;
@@ -293,6 +509,7 @@ summary {
     justify-content: center;
     gap: 6px;
     padding: 0;
+    flex-shrink: 0;
 }
 
 .menu-btn:not(:disabled):hover {
@@ -326,17 +543,9 @@ summary {
     display: flex;
     flex-direction: column;
     padding: 0 0 0 24px;
-}
-
-/* linea divisoria inset come nel design */
-.board-left::after {
-    content: '';
-    position: absolute;
-    top: 32px;
-    bottom: 32px;
-    right: -9px;
-    width: 1px;
-    background: var(--divider);
+    /* sottile vetro sotto la colonna, come nel componente Figma (blur, no fondo) */
+    -webkit-backdrop-filter: blur(6px);
+    backdrop-filter: blur(6px);
 }
 
 .stack {
@@ -363,7 +572,7 @@ summary {
 .play-card {
     position: relative;
     width: 100%;
-    height: 38px;
+    height: 43px;
     flex-shrink: 0;
     border: none;
     background: none;
@@ -376,7 +585,7 @@ summary {
 }
 
 .play-card.selected {
-    height: 78px;
+    height: 75px;
 }
 
 .play-face {
@@ -388,7 +597,7 @@ summary {
     border-radius: var(--radius-card);
     overflow: hidden;
     background: var(--text-inverted);
-    box-shadow: var(--shadow-row);
+    box-shadow: var(--shadow-card);
     color: var(--text);
     transition: box-shadow 0.2s ease;
 }
@@ -396,7 +605,7 @@ summary {
 /* niente bordo trasparente: con l'immagine incassata (inset:0) lascerebbe
    scoperto il background chiaro sottostante, disegnando un anello bianco */
 .play-card.selected .play-face {
-    box-shadow: 0 0 0 2px var(--golden-orange), var(--shadow-row);
+    box-shadow: 0 0 0 2px var(--golden-orange), var(--shadow-card);
 }
 
 .play-face img {
@@ -441,21 +650,25 @@ summary {
     text-overflow: ellipsis;
 }
 
+/* badge conteggio: pillola chiara attaccata al bordo destro della carta
+   (arrotondata solo a sinistra), testo scuro — come nel componente Figma */
 .play-badge {
     position: absolute;
-    top: 13px;
-    right: 13px;
+    top: 12px;
+    right: 0;
     z-index: 1;
-    min-width: 19px;
-    padding: 2px;
-    border-radius: 999px;
-    background: var(--overlay);
-    color: var(--text-inverted);
-    font-size: 0.75rem;
+    min-width: 15px;
+    padding: 2px 9px;
+    border-radius: 999px 0 0 999px;
+    background: var(--text-inverted);
+    color: var(--text);
+    font-size: 0.875rem;
     line-height: 1.2;
     text-align: center;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
 }
 
+/* "+" aggiungi token: pillola chiara con icona scura e ombra (Figma) */
 .add-btn {
     position: absolute;
     bottom: 16px;
@@ -465,22 +678,21 @@ summary {
     margin-inline: auto;
     z-index: 2;
     width: 80px;
-    height: 40px;
+    height: 36px;
     flex-shrink: 0;
     display: flex;
     align-items: center;
     justify-content: center;
     border-radius: 999px;
-    border: 1px solid var(--border-soft);
-    background: var(--overlay);
-    color: var(--text-inverted);
+    border: none;
+    background: var(--text-inverted);
+    color: var(--text);
     padding: 0;
-    -webkit-backdrop-filter: blur(2px);
-    backdrop-filter: blur(2px);
+    box-shadow: 0 2px 2px rgba(0, 0, 0, 0.4);
 }
 
 .add-btn:not(:disabled):hover {
-    background: rgba(0, 0, 0, 0.95);
+    background: #ffffff;
 }
 
 .add-btn:not(:disabled):active {
@@ -546,20 +758,21 @@ summary {
     padding: 0 16px;
 }
 
+/* contatore: tab chiaro in alto a destra, flush, arrotondato solo in basso-sx */
 .center-count {
     position: absolute;
-    top: 15px;
-    right: 14px;
+    top: 0;
+    right: 0;
     z-index: 1;
-    width: 50px;
-    height: 50px;
-    border-radius: 50%;
-    background: var(--overlay);
-    color: var(--text-inverted);
-    font-size: 1.75rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    min-width: 15px;
+    padding: 6px 9px;
+    border-radius: 0 0 0 16px;
+    background: var(--text-inverted);
+    color: var(--text);
+    font-size: 1.5rem;
+    line-height: 1;
+    text-align: center;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
 }
 
 /* campo di testo per etichettare la copia, sulla fascia di testo della carta.
@@ -654,18 +867,17 @@ summary {
     align-items: center;
     justify-content: center;
     border-radius: 999px;
-    border: 1px solid var(--text-inverted);
-    background: var(--overlay);
-    color: var(--text-inverted);
+    border: none;
+    background: var(--text-inverted);
+    color: var(--text);
     font-size: 1rem;
     font-weight: 400;
     line-height: 1;
-    -webkit-backdrop-filter: blur(2px);
-    backdrop-filter: blur(2px);
+    box-shadow: 0 2px 2px rgba(0, 0, 0, 0.4);
 }
 
 .round:not(:disabled):hover {
-    background: rgba(0, 0, 0, 0.95);
+    background: #ffffff;
 }
 
 .round:not(:disabled):active {
@@ -810,6 +1022,144 @@ summary {
     background: var(--overlay);
 }
 
+/* --- riassunto: griglia di tutti i token in gioco --- */
+.summary {
+    position: absolute;
+    inset: 0;
+    z-index: 20;
+    overflow-y: auto;
+    padding: calc(60px + env(safe-area-inset-top, 0px)) 24px 24px;
+    scrollbar-width: none;
+    overscroll-behavior: contain;
+}
+
+.summary::-webkit-scrollbar {
+    display: none;
+}
+
+/* la board (colonne di modifica) e la maniglia spariscono nel riassunto */
+#board-view.summary-active .board,
+#board-view.summary-active .drawer-handle {
+    display: none;
+}
+
+.summary-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: clamp(12px, 2.5vw, 32px);
+    align-content: start;
+}
+
+.summary-empty {
+    color: var(--text-inverted-soft);
+    font-size: 0.95rem;
+    text-align: center;
+    margin-top: 22vh;
+}
+
+/* ogni carta: faccia dritta (stappate) + carta girata 90° dietro (tappate) */
+.summary-card {
+    position: relative;
+    aspect-ratio: 148.89 / 149;
+}
+
+.summary-face,
+.summary-spine-inner {
+    position: absolute;
+    overflow: hidden;
+    border-radius: var(--radius-mini);
+    background: rgba(139, 139, 139, 0.7);
+}
+
+.summary-face img,
+.summary-spine-inner img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+/* faccia dritta (stappate): colonna sinistra, altezza piena */
+.summary-face {
+    left: 0;
+    top: 0;
+    height: 100%;
+    aspect-ratio: var(--card-ratio);
+    z-index: 2;
+    box-shadow: 0 2px 2px rgba(0, 0, 0, 0.4);
+}
+
+/* wrap non ruotato: occupa la fascia bassa, dà il contesto per il badge tappate */
+.summary-spine {
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    width: 100%;
+    height: 71.5%;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* la carta "tappata": stessa carta ruotata di 90°, spunta a destra della faccia */
+.summary-spine-inner {
+    position: relative;
+    width: 71.5%;
+    aspect-ratio: var(--card-ratio);
+    transform: rotate(90deg);
+    box-shadow: 0 2px 2px rgba(0, 0, 0, 0.4);
+}
+
+.summary-fallback {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 22px 6px;
+    font-size: 0.7rem;
+    color: var(--text);
+    text-align: center;
+    overflow: hidden;
+}
+
+/* badge conteggio: pillola chiara, testo scuro 18px */
+.summary-count {
+    position: absolute;
+    z-index: 3;
+    min-width: 15px;
+    padding: 6px;
+    background: var(--text-inverted);
+    color: var(--text);
+    font-size: 18px;
+    line-height: 1;
+    text-align: center;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
+}
+
+/* stappate: angolo alto-sinistra della faccia */
+.summary-face .summary-count {
+    top: 0;
+    left: 0;
+    border-radius: 0 0 12px 0;
+}
+
+/* tappate: angolo alto-destra sulla striscia della carta girata */
+.summary-count-tap {
+    top: 0;
+    right: 0;
+    border-radius: 0 0 0 12px;
+}
+
+/* in verticale la griglia è a 2 colonne */
+@media (orientation: portrait) {
+    .summary-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
 /* --- editor segnalini forza/costituzione --- */
 .editor-overlay {
     position: absolute;
@@ -848,14 +1198,15 @@ summary {
     padding: 0 16px;
     border: none;
     border-radius: var(--radius-box-sm);
-    background: var(--text);
-    color: var(--text-inverted);
+    background: var(--text-inverted);
+    color: var(--text);
     font-size: 1.25rem;
     line-height: 1;
+    box-shadow: 0 2px 2px rgba(0, 0, 0, 0.4);
 }
 
 .editor-stepper button:not(:disabled):hover {
-    background: #000000;
+    background: #ffffff;
 }
 
 .editor-num {
@@ -903,44 +1254,59 @@ summary {
     gap: 24px;
 }
 
+/* colonna sinistra (landscape): input "Cerca" sopra, toggle sotto — larga 275
+   come nel Figma. In portrait diventa full-width sopra la griglia. */
+.search-left {
+    flex-shrink: 0;
+    width: clamp(220px, 32%, 275px);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
 .search-panel input {
-    width: clamp(160px, 29%, 275px);
+    width: 100%;
     background: var(--text-inverted);
     border: none;
     color: var(--text);
     border-radius: var(--radius-field);
     padding: 10px;
     font-size: 1rem;
+    text-align: center;
     flex-shrink: 0;
 }
 
-/* toggle sorgente ricerca: Mazzo / Scryfall */
+/* toggle sorgente ricerca: traccia chiara, segmenti a metà, attivo scuro
+   (identico nei due orientamenti, come nel componente Figma) */
 .search-toggle {
-    flex-shrink: 0;
     display: flex;
-    padding: 3px;
-    gap: 2px;
-    border-radius: 999px;
-    background: var(--overlay);
+    width: 100%;
+    gap: 10px;
+    padding: 2px;
+    border-radius: 13px;
+    background: var(--text-inverted);
 }
 
 .search-toggle-btn {
+    flex: 1;
     border: none;
     background: none;
-    color: var(--text-inverted-soft);
-    font-size: 0.8rem;
-    padding: 6px 14px;
-    border-radius: 999px;
+    color: var(--text);
+    font-size: 1rem;
+    padding: 6px 32px;
+    border-radius: 12px;
     line-height: 1;
 }
 
 .search-toggle-btn.active {
-    background: var(--golden-orange);
-    color: var(--num-text);
+    background: var(--overlay);
+    color: var(--text-inverted);
+    -webkit-backdrop-filter: blur(2px);
+    backdrop-filter: blur(2px);
 }
 
 .search-toggle-btn:not(.active):not(:disabled):hover {
-    color: var(--text-inverted);
+    color: var(--num-text);
 }
 
 /* messaggio di stato nella riga risultati (vuoto, caricamento, errore) */
@@ -969,15 +1335,17 @@ summary {
     display: none;
 }
 
+/* carta risultato (landscape): 73px di larghezza, raggio 6px come nel Figma */
 .search-card {
     position: relative;
     border: none;
     background: var(--text-inverted);
     color: var(--text);
-    border-radius: var(--radius-box);
+    border-radius: var(--radius-mini);
     overflow: hidden;
     padding: 0;
-    height: 98px;
+    width: 73px;
+    height: auto;
     aspect-ratio: var(--card-ratio);
     flex-shrink: 0;
 }
@@ -1014,18 +1382,17 @@ summary {
 .search-close {
     align-self: center;
     padding: 8px 24px;
-    border: 1px solid var(--text-inverted);
+    border: none;
     border-radius: 999px;
-    background: var(--overlay);
-    color: var(--text-inverted);
+    background: var(--text-inverted);
+    color: var(--text);
     font-size: 1rem;
     line-height: 1.3;
-    -webkit-backdrop-filter: blur(2px);
-    backdrop-filter: blur(2px);
+    box-shadow: 0 2px 2px rgba(0, 0, 0, 0.4);
 }
 
 .search-close:not(:disabled):hover {
-    background: rgba(0, 0, 0, 0.95);
+    background: #ffffff;
 }
 
 /* --- modali (menu) --- */
@@ -1037,6 +1404,12 @@ summary {
     display: flex;
     align-items: center;
     justify-content: center;
+}
+
+/* la conferma pulizia vive nella vista import, dove il body NON è position:fixed:
+   fixed la ancora al viewport a prescindere dallo scroll di pagina */
+#confirm-clear-recent {
+    position: fixed;
 }
 
 .modal-box {
@@ -1070,14 +1443,15 @@ summary {
     margin-bottom: 8px;
     padding: 0.55rem 1.1rem;
     border-radius: 999px;
-    border: 1px solid var(--text-inverted);
-    background: var(--overlay);
-    color: var(--text-inverted);
+    border: none;
+    background: var(--text-inverted);
+    color: var(--text);
     font-size: 0.9rem;
+    box-shadow: 0 2px 2px rgba(0, 0, 0, 0.4);
 }
 
 .menu-item:not(:disabled):hover {
-    background: rgba(0, 0, 0, 0.95);
+    background: #ffffff;
 }
 
 body.board-active #import-view {
@@ -1113,21 +1487,20 @@ body.board-active {
     padding: 0;
     align-items: center;
     justify-content: center;
-    border: 1px solid var(--border-soft);
-    border-left: none;
+    border: none;
     border-radius: 0 var(--radius-field) var(--radius-field) 0;
-    background: var(--overlay);
-    color: var(--text-inverted);
-    -webkit-backdrop-filter: blur(2px);
-    backdrop-filter: blur(2px);
+    /* vetro chiaro sfumato con grip scuro, come nel componente Figma */
+    background: linear-gradient(to right, rgba(255, 255, 255, 0.2), var(--text-inverted));
+    -webkit-backdrop-filter: blur(4px);
+    backdrop-filter: blur(4px);
     transition: opacity 0.2s ease, transform 0.2s ease;
 }
 
 .drawer-handle-grip {
-    width: 4px;
+    width: 3px;
     height: 36px;
     border-radius: 999px;
-    background: var(--text-inverted);
+    background: var(--text);
 }
 
 .drawer-scrim {
@@ -1184,10 +1557,8 @@ body.board-active {
         transform: translateX(0);
     }
 
-    /* nel drawer la linea divisoria della versione landscape non serve */
-    .board-left::after {
-        display: none;
-    }
+    /* nel drawer il vetro (blur) resta, ma senza fondo aggiuntivo: il bg tray
+       arriva dalla regola portrait di .board-left qui sotto */
 
     /* il padding orizzontale grosso è sul drawer; qui resta la tolleranza per
        l'anello di selezione: overflow-y:auto rende scroll container anche
@@ -1218,12 +1589,14 @@ body.board-active {
         margin: auto;
     }
 
-    /* carta selezionata: centrata in alto, altezza guidata dallo spazio */
+    /* carta selezionata: centrata in alto, altezza guidata dallo spazio.
+       margin-top porta la carta sotto i controlli (switch + menu, ~55px) così
+       il contatore nell'angolo alto-destra non finisce coperto */
     .center-card {
         align-self: center;
         height: clamp(220px, 42vh, 420px);
         width: auto;
-        margin-top: calc(32px + env(safe-area-inset-top));
+        margin-top: calc(64px + env(safe-area-inset-top));
     }
 
     /* tray a tutta larghezza, ancorato in basso, angoli superiori arrotondati */
@@ -1247,47 +1620,19 @@ body.board-active {
         max-height: 80dvh;
         flex-direction: column;
         align-items: stretch;
-        gap: 12px;
+        gap: 24px;
         /* spazio in alto per la X; bg vetro chiaro, blur e angoli inferiori
            arrotondati restano dalla regola base (come nel Figma) */
         padding: calc(env(safe-area-inset-top, 0px) + 52px) 20px 24px;
     }
 
-    /* ordine come nel Figma: input, poi toggle, poi griglia */
-    .search-panel input {
-        order: 1;
+    /* la colonna input+toggle occupa tutta la larghezza sopra la griglia;
+       lo stile del toggle arriva già dalla regola base (identico al Figma) */
+    .search-left {
         width: 100%;
     }
 
-    /* toggle segmentato: traccia chiara, segmenti a metà, attivo scuro */
-    .search-toggle {
-        order: 2;
-        align-self: stretch;
-        gap: 4px;
-        padding: 2px;
-        border-radius: 13px;
-        background: var(--text-inverted);
-    }
-
-    .search-toggle-btn {
-        flex: 1;
-        padding: 8px;
-        font-size: 0.95rem;
-        border-radius: 12px;
-        color: var(--text);
-    }
-
-    .search-toggle-btn.active {
-        background: var(--overlay);
-        color: var(--text-inverted);
-    }
-
-    .search-toggle-btn:not(.active):not(:disabled):hover {
-        color: var(--text);
-    }
-
     .search-grid {
-        order: 3;
         flex: 0 1 auto;
         min-height: 0;
         display: grid;
@@ -1303,9 +1648,11 @@ body.board-active {
         padding: 2px;
     }
 
+    /* carta risultato (verticale): riempie la colonna della griglia, raggio 4px */
     .search-card {
-        height: auto;
         width: 100%;
+        height: auto;
+        border-radius: var(--radius-box);
     }
 
     .search-msg {
