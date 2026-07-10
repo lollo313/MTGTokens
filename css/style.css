@@ -73,7 +73,7 @@ html, body {
     min-height: 100dvh;
     background-color: var(--bg);
     /* texture in multiply sopra il fade verticale bg -> pacific blue */
-    background-image: url('../img/bg-texture-1.png'), linear-gradient(to bottom, var(--bg), var(--pacific-blue));
+    background-image: url('../img/bg-texture-4.png'), linear-gradient(to bottom, var(--bg), var(--pacific-blue));
     background-size: cover, 100% 100%;
     background-repeat: no-repeat;
     background-blend-mode: multiply, normal;
@@ -144,8 +144,7 @@ button svg {
 
 /* Riempie il viewport: due metà affiancate in landscape, impilate in portrait */
 #import-view {
-    min-height: 100vh;
-    min-height: 100dvh;
+    height: 100dvh;
     display: flex;
     flex-direction: column;
     padding: clamp(16px, 2.5vw, 32px);
@@ -588,6 +587,8 @@ summary {
     display: flex;
     align-items: center;
     justify-content: center;
+    overflow: hidden;
+    border-radius: var(--radius-mini);
 }
 
 .grid-spine-inner {
@@ -699,7 +700,7 @@ summary {
     display: flex;
     flex-direction: column;
     gap: 24px;
-    padding: 24px;
+    padding: 24px 24px 0 24px;
     border-radius: var(--radius-sheet) var(--radius-sheet) 0 0;
     background: var(--tray);
     -webkit-backdrop-filter: blur(4px);
@@ -707,20 +708,72 @@ summary {
     box-shadow: var(--shadow-tray);
 }
 
-/* etichetta copia: input compatto sopra la griglia del tray (solo per le copie) */
-.tray .copy-label {
+/* campo nome copia (con autocomplete): input "underline", niente sfondo, solo
+   border-bottom chiaro. In landscape sta accanto al menu (largh. contenuta),
+   in portrait nel tray a tutta larghezza (spostato tra i due via JS). */
+.copy-field {
+    position: relative;
     flex-shrink: 0;
-    text-align: center;
-    background: var(--text-inverted);
-    color: var(--text);
-    border: 1px solid var(--golden-orange);
-    border-radius: var(--radius-field);
-    padding: 8px 12px;
-    font-size: 1rem;
+    width: clamp(150px, 20vw, 200px);
 }
 
-.tray .copy-label::placeholder {
-    color: var(--placeholder);
+.copy-field .copy-label {
+    width: 100%;
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid var(--text-inverted);
+    border-radius: 0;
+    color: var(--text-inverted);
+    padding: 4px 2px;
+    font-size: 0.9rem;
+    text-align: left;
+}
+
+.copy-field .copy-label::placeholder {
+    color: var(--text-inverted-soft);
+}
+
+.copy-field .copy-label:focus {
+    outline: none;
+    border-bottom-color: var(--golden-orange);
+}
+
+/* dropdown suggerimenti: pannello chiaro; in landscape ancorato a destra e
+   allargato al contenuto per leggere i nomi lunghi */
+.copy-suggest {
+    position: absolute;
+    top: calc(100% + 4px);
+    right: 0;
+    left: auto;
+    z-index: 5;
+    min-width: 100%;
+    width: max-content;
+    max-width: min(320px, 80vw);
+    margin: 0;
+    padding: 4px;
+    list-style: none;
+    max-height: 240px;
+    overflow-y: auto;
+    background: var(--text-inverted);
+    color: var(--text);
+    border-radius: var(--radius-field);
+    box-shadow: var(--shadow-card);
+    scrollbar-width: thin;
+}
+
+.copy-suggest-item {
+    padding: 8px 10px;
+    border-radius: var(--radius-box);
+    font-size: 0.9rem;
+    cursor: pointer;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.copy-suggest-item:hover,
+.copy-suggest-item.active {
+    background: rgba(0, 0, 0, 0.08);
 }
 
 /* in modalità selezione il tray sale sopra lo scrim */
@@ -1260,6 +1313,19 @@ body.board-active {
         flex: 1;
         min-height: 0;
         margin: 24px 16px 0;
+    }
+
+    /* in portrait il campo copia vive nel tray, a tutta larghezza; il dropdown
+       segue la larghezza dell'input */
+    .copy-field {
+        width: auto;
+    }
+
+    .copy-suggest {
+        left: 0;
+        right: 0;
+        width: auto;
+        max-width: none;
     }
 
     /* --- ricerca (Figma Frame 82): sheet in alto a vetro chiaro con angoli

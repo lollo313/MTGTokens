@@ -29,8 +29,35 @@ const Scryfall = {
       image: this.cardImage(c),
       typeLine: c.type_line || '',
       oracleText: oracle,
+      power: c.power ?? null,
+      toughness: c.toughness ?? null,
+      colors: c.colors || null,
       isCopy: c.name === 'Copy' || /copy of a permanent/i.test(oracle)
     };
+  },
+
+  // Firma di equivalenza di un token: stessi nome, tipo, forza/costituzione,
+  // colori e testo => è lo "stesso" token stampato in set diversi (id/arte
+  // diversi), quindi va mostrato una volta sola.
+  tokenSignature(c) {
+    return [
+      (c.name || '').toLowerCase().trim(),
+      (c.type_line || '').toLowerCase().trim(),
+      c.power ?? '',
+      c.toughness ?? '',
+      (c.colors || []).slice().sort().join(''),
+      (c.oracle_text || '').toLowerCase().trim()
+    ].join('|');
+  },
+
+  // Suggerimenti di nomi carta (autocomplete ufficiale Scryfall). Max 20 nomi.
+  async autocomplete(query, signal) {
+    const q = query.trim();
+    if (q.length < 2) return [];
+    const res = await fetch(`${this.API_BASE}/cards/autocomplete?q=${encodeURIComponent(q)}`, { signal });
+    if (!res.ok) return [];
+    const data = await res.json();
+    return data.data || [];
   },
 
   // Immagine della carta nominata (fuzzy), per il token copia. null se non trovata.
@@ -95,8 +122,17 @@ const Scryfall = {
     const tokenIdentifiers = [...tokenIds].map(id => ({ id }));
     const tokenCards = await this.postCollection(tokenIdentifiers);
 
-    const tokens = tokenCards
-      .map(t => this.cardToToken(t))
+    // Dedup per firma: token identici da stampe diverse -> una sola voce,
+    // preferendo quella che ha un'immagine.
+    const bySig = new Map();
+    for (const c of tokenCards) {
+      const sig = this.tokenSignature(c);
+      const tok = this.cardToToken(c);
+      const prev = bySig.get(sig);
+      if (!prev || (!prev.image && tok.image)) bySig.set(sig, tok);
+    }
+
+    const tokens = [...bySig.values()]
       .sort((a, b) => a.name.localeCompare(b.name, 'it'));
 
     return { tokens, cardCount: cards.length };

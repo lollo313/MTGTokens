@@ -26,7 +26,6 @@
     <div class="import-form">
       <div class="import-head">
         <h1>Token Tracker</h1>
-        <p>Importa il mazzo, individua i token esatti, tienili sotto controllo durante la partita.</p>
       </div>
 
       <label class="field-label" for="deck-title">Titolo del mazzo</label>
@@ -34,7 +33,6 @@
 
       <label class="field-label" for="decklist-input">Decklist</label>
       <textarea id="decklist-input" placeholder="1 Bitterblossom&#10;1 Elspeth, Sun's Champion&#10;1 Lingering Souls&#10;..."></textarea>
-      <p class="hint">Incolla la decklist (una carta per riga, il numero iniziale è opzionale). Set e numero collezione vengono ignorati.</p>
 
       <div class="row">
         <button class="primary" id="btn-analyze">Analizza mazzo</button>
@@ -67,8 +65,12 @@
 
 <!-- ============ VISTA 2: BOARD ============ -->
 <section id="board-view" hidden>
-  <!-- Menu in alto a destra -->
+  <!-- Controlli in alto a destra: campo nome copia (solo per le copie) + menu -->
   <div class="board-controls">
+    <div id="copy-field" class="copy-field" hidden>
+      <input id="copy-label" class="copy-label" type="text" placeholder="Copia di…" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="copy-suggest">
+      <ul id="copy-suggest" class="copy-suggest" role="listbox" hidden></ul>
+    </div>
     <button id="btn-menu" class="menu-btn" aria-label="Menu">
       <span></span><span></span><span></span>
     </button>
@@ -100,7 +102,6 @@
         <span class="select-label">Select one or more tokens</span>
         <button id="btn-select-done" class="pill pill-light">Done</button>
       </div>
-      <input id="copy-label" class="copy-label" type="text" placeholder="Copia di…" autocomplete="off" hidden>
       <div id="tray-grid" class="tray-grid"></div>
     </aside>
   </div>
@@ -148,7 +149,7 @@
   <div id="menu-sheet" class="modal" hidden>
     <div class="modal-box">
       <div class="modal-title">Menu</div>
-      <button id="menu-new-game" class="menu-item">Nuova partita (azzera contatori)</button>
+      <button id="menu-new-game" class="menu-item">Nuova partita</button>
       <button id="menu-change-deck" class="menu-item">Cambia mazzo</button>
       <button id="menu-close" class="modal-cancel">Chiudi</button>
     </div>

@@ -148,6 +148,19 @@ const Storage = {
     this._saveState(state);
   },
 
+  // Sposta le istanze in gioco da un token a un altro (usato quando si
+  // collassano token duplicati). Conserva tap e segnalini di ogni istanza.
+  mergeInstances(fromId, toId) {
+    if (fromId === toId) return;
+    const state = this._loadState();
+    const from = state[fromId];
+    if (from && Array.isArray(from.instances) && from.instances.length) {
+      this._entry(state, toId).instances.push(...from.instances);
+    }
+    delete state[fromId];
+    this._saveState(state);
+  },
+
   // Rimuove le istanze agli indici dati (0-based).
   removeAt(tokenId, indices) {
     const state = this._loadState();

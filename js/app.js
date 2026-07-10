@@ -30,7 +30,9 @@ const els = {
   btnInstPlus: document.getElementById('btn-inst-plus'),
   btnInstMinus: document.getElementById('btn-inst-minus'),
   btnSelectDone: document.getElementById('btn-select-done'),
+  copyField: document.getElementById('copy-field'),
   copyLabel: document.getElementById('copy-label'),
+  copySuggest: document.getElementById('copy-suggest'),
   boardScrim: document.getElementById('board-scrim'),
   // editor segnalini
   counterEditor: document.getElementById('counter-editor'),
@@ -48,6 +50,7 @@ const els = {
   searchModeDeck: document.getElementById('search-mode-deck'),
   searchModeScryfall: document.getElementById('search-mode-scryfall'),
   // menu
+  boardControls: document.querySelector('.board-controls'),
   btnMenu: document.getElementById('btn-menu'),
   menuSheet: document.getElementById('menu-sheet'),
   menuNewGame: document.getElementById('menu-new-game'),
@@ -196,10 +199,51 @@ async function analyzeDeck(cardNames) {
 // --- passaggio alla board ---
 function enterBoard(tokens) {
   allTokens = tokens;
+  dedupeLoadedTokens(); // mazzi vecchi/salvati: collassa i token duplicati
   document.body.classList.add('board-active');
   els.boardView.hidden = false;
   selectedId = null;
   renderBoard();
+}
+
+// firma di equivalenza di un token (stessa di Scryfall, sui campi del token).
+// I mazzi vecchi non hanno forza/costituzione/colori salvati: lì i campi
+// mancanti valgono '' e il dedup ricade su nome + tipo + testo.
+function tokenSig(t) {
+  return [
+    (t.name || '').toLowerCase().trim(),
+    (t.typeLine || '').toLowerCase().trim(),
+    t.power ?? '',
+    t.toughness ?? '',
+    (t.colors || []).slice().sort().join(''),
+    (t.oracleText || '').toLowerCase().trim()
+  ].join('|');
+}
+
+// Collassa i token duplicati già in allTokens (stampe diverse dello stesso
+// token), migrando le istanze in gioco sul sopravvissuto. Le copie dinamiche
+// (etichettabili) restano sempre distinte.
+function dedupeLoadedTokens() {
+  const keepBySig = new Map();
+  const survivors = [];
+  let changed = false;
+  for (const t of allTokens) {
+    if (t.dynamic) { survivors.push(t); continue; }
+    const sig = tokenSig(t);
+    const keep = keepBySig.get(sig);
+    if (!keep) {
+      keepBySig.set(sig, t);
+      survivors.push(t);
+    } else {
+      Storage.mergeInstances(t.id, keep.id);
+      if (!keep.image && t.image) keep.image = t.image;
+      changed = true;
+    }
+  }
+  if (changed) {
+    allTokens = survivors;
+    Storage.saveTokens(allTokens);
+  }
 }
 
 function tokenById(id) { return allTokens.find(t => t.id === id); }
@@ -338,7 +382,8 @@ function renderTray() {
 
     // etichetta modificabile: solo per i token copia, non in selezione
     const copy = isCopyEntry(t);
-    els.copyLabel.hidden = !copy || Boolean(selectMode);
+    els.copyField.hidden = !copy || Boolean(selectMode);
+    if (els.copyField.hidden) closeSuggest();
     if (copy && document.activeElement !== els.copyLabel) {
       els.copyLabel.value = t.label || '';
     }
@@ -638,11 +683,13 @@ els.searchModeDeck.addEventListener('click', () => setSearchMode('deck'));
 els.searchModeScryfall.addEventListener('click', () => setSearchMode('scryfall'));
 els.searchClose.addEventListener('click', closeSearch);
 
-// --- etichetta della copia (input nel tray, solo per i token copia) ---
-els.copyLabel.addEventListener('input', () => {
+// --- etichetta della copia (input nel tray con autocomplete, solo per le copie) ---
+// applica il testo all'etichetta della copia selezionata: salva, aggiorna la
+// caption sulla card e (con debounce) recupera l'immagine della carta nominata
+function applyCopyLabel(value) {
   const t = selectedId ? tokenById(selectedId) : null;
   if (!isCopyEntry(t)) return;
-  t.label = els.copyLabel.value;
+  t.label = value;
   Storage.saveTokens(allTokens);
   // aggiorna la sola card selezionata senza ricostruire (non perde il focus)
   const card = els.gridScroll.querySelector('.grid-card[data-id="' + t.id + '"]');
@@ -656,12 +703,103 @@ els.copyLabel.addEventListener('input', () => {
     cap.textContent = t.label || 'Copia';
     card.setAttribute('aria-label', t.label ? `Copia: ${t.label}` : 'Copia senza nome');
   }
-  // cerca l'immagine della carta copiata (con debounce)
   scheduleCopyImageFetch(t);
+}
+
+// --- autocomplete dei nomi carta (Scryfall) sull'input della copia ---
+let acTimer = null;
+let acSeq = 0;
+let acController = null;
+let acItems = [];
+let acIndex = -1;
+
+function scheduleAutocomplete(value) {
+  clearTimeout(acTimer);
+  const q = value.trim();
+  if (q.length < 2) { closeSuggest(); return; }
+  acTimer = setTimeout(async () => {
+    const seq = ++acSeq;
+    if (acController) acController.abort();
+    acController = new AbortController();
+    try {
+      const names = await Scryfall.autocomplete(q, acController.signal);
+      if (seq !== acSeq) return; // superata da una richiesta più recente
+      renderSuggestions(names.slice(0, 8));
+    } catch (e) { /* abort o rete: lascia il dropdown com'è */ }
+  }, 220);
+}
+
+function renderSuggestions(names) {
+  acItems = names;
+  acIndex = -1;
+  els.copySuggest.innerHTML = '';
+  if (!names.length) { closeSuggest(); return; }
+  names.forEach((name, i) => {
+    const li = document.createElement('li');
+    li.className = 'copy-suggest-item';
+    li.setAttribute('role', 'option');
+    li.dataset.index = i;
+    li.textContent = name;
+    // mousedown (non click): scatta prima del blur, così non perdo la selezione
+    li.addEventListener('mousedown', e => { e.preventDefault(); selectSuggestion(name); });
+    els.copySuggest.appendChild(li);
+  });
+  els.copySuggest.hidden = false;
+  els.copyLabel.setAttribute('aria-expanded', 'true');
+}
+
+function moveActive(delta) {
+  if (!acItems.length) return;
+  acIndex = (acIndex + delta + acItems.length) % acItems.length;
+  [...els.copySuggest.children].forEach((li, i) => li.classList.toggle('active', i === acIndex));
+}
+
+function selectSuggestion(name) {
+  els.copyLabel.value = name;
+  applyCopyLabel(name);
+  closeSuggest();
+  els.copyLabel.focus();
+}
+
+function closeSuggest() {
+  clearTimeout(acTimer);
+  if (acController) acController.abort();
+  els.copySuggest.hidden = true;
+  els.copySuggest.innerHTML = '';
+  els.copyLabel.setAttribute('aria-expanded', 'false');
+  acItems = [];
+  acIndex = -1;
+}
+
+els.copyLabel.addEventListener('input', () => {
+  applyCopyLabel(els.copyLabel.value);
+  scheduleAutocomplete(els.copyLabel.value);
 });
 els.copyLabel.addEventListener('keydown', e => {
-  if (e.key === 'Enter') els.copyLabel.blur();
+  const open = !els.copySuggest.hidden && acItems.length > 0;
+  if (e.key === 'ArrowDown' && open) { e.preventDefault(); moveActive(1); }
+  else if (e.key === 'ArrowUp' && open) { e.preventDefault(); moveActive(-1); }
+  else if (e.key === 'Enter') {
+    if (open && acIndex >= 0) { e.preventDefault(); selectSuggestion(acItems[acIndex]); }
+    else els.copyLabel.blur();
+  } else if (e.key === 'Escape' && open) {
+    e.preventDefault();
+    closeSuggest();
+  }
 });
+els.copyLabel.addEventListener('blur', closeSuggest);
+
+// il campo nome copia sta accanto al menu in landscape, nel tray in portrait
+const copyFieldMQ = matchMedia('(orientation: portrait)');
+function placeCopyField() {
+  if (copyFieldMQ.matches) {
+    if (els.copyField.parentElement !== els.tray) els.tray.insertBefore(els.copyField, els.trayGrid);
+  } else if (els.copyField.parentElement !== els.boardControls) {
+    els.boardControls.insertBefore(els.copyField, els.btnMenu);
+  }
+}
+copyFieldMQ.addEventListener('change', () => { closeSuggest(); placeCopyField(); });
+placeCopyField();
 
 // --- menu ---
 els.btnMenu.addEventListener('click', () => { els.menuSheet.hidden = false; });
