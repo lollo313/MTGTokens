@@ -87,9 +87,6 @@ crossfade.timers = {};
 
 let lastTrayTokenId; // undefined finché non c'è stato un primo render del tray
 
-// id di una copia appena creata da mettere a fuoco per l'etichetta
-let pendingFocusCopy = null;
-
 // --- token copia: ogni copia è una riga a sé con etichetta modificabile ---
 function newCopyId() {
   return (self.crypto && crypto.randomUUID)
@@ -387,10 +384,6 @@ function renderTray() {
     if (copy && document.activeElement !== els.copyLabel) {
       els.copyLabel.value = t.label || '';
     }
-    if (copy && pendingFocusCopy === t.id) {
-      pendingFocusCopy = null;
-      els.copyLabel.focus();
-    }
 
     els.trayGrid.innerHTML = '';
     instances.forEach((inst, i) => {
@@ -577,8 +570,6 @@ function openSearch() {
   els.searchInput.value = '';
   els.searchOverlay.hidden = false;
   setSearchMode('deck');
-  // con la barra in alto la tastiera in landscape non copre più la scelta
-  els.searchInput.focus();
 }
 
 function closeSearch() {
@@ -630,7 +621,6 @@ function pickToken(t, { persistNew = false } = {}) {
   if (t.isCopy) {
     const entry = createCopyEntry(t);
     selectedId = entry.id;
-    pendingFocusCopy = entry.id;
   } else {
     let entry = tokenById(t.id);
     if (!entry) {
