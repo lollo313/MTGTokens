@@ -9,7 +9,7 @@
 //  - Richieste cross-origin (api.scryfall.com, archidekt.com) e non-GET =>
 //    NON intercettate: vanno sempre dritte in rete.
 
-const CACHE_NAME = 'token-tracker-v8';
+const CACHE_NAME = 'token-tracker-v9';
 const APP_SHELL = [
   './',
   './index.html',
@@ -19,6 +19,7 @@ const APP_SHELL = [
   './js/scryfall.js',
   './js/storage.js',
   './img/bg-texture.png',
+  './icons/logo.svg',
   './icons/icon-192.png',
   './icons/icon-512.png'
 ];

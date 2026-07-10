@@ -8,7 +8,8 @@
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#0a0d11">
 <link rel="apple-touch-icon" href="icons/icon-192.png">
-<link rel="icon" href="icons/icon-192.png">
+<link rel="icon" type="image/svg+xml" href="icons/logo.svg">
+<link rel="icon" type="image/png" href="icons/icon-192.png">
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -66,78 +67,43 @@
 
 <!-- ============ VISTA 2: BOARD ============ -->
 <section id="board-view" hidden>
-  <!-- Controlli in alto a destra: switch vista (modifica / riassunto) + menu -->
+  <!-- Menu in alto a destra -->
   <div class="board-controls">
-    <div class="view-switch" role="group" aria-label="Vista">
-      <button id="view-edit" class="view-switch-btn active" aria-label="Modifica" aria-pressed="true">
-        <svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true"><rect x="2.5" y="3.5" width="15" height="13" rx="2.5" fill="none" stroke="currentColor" stroke-width="2"/><line x1="8" y1="3.5" x2="8" y2="16.5" stroke="currentColor" stroke-width="2"/></svg>
-      </button>
-      <button id="view-summary" class="view-switch-btn" aria-label="Riassunto" aria-pressed="false">
-        <svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M2 2h7v7H2V2Zm9 0h7v7h-7V2ZM2 11h7v7H2v-7Zm9 0h7v7h-7v-7Z"/></svg>
-      </button>
-    </div>
     <button id="btn-menu" class="menu-btn" aria-label="Menu">
       <span></span><span></span><span></span>
     </button>
   </div>
 
   <div class="board">
-    <!-- Colonna sinistra: pila dei token in gioco -->
-    <div class="board-left">
-      <div id="stack" class="stack"></div>
-      <button id="btn-add" class="add-btn" aria-label="Aggiungi token">
-        <svg viewBox="0 0 12 12" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M6.93555 5.43555H12V6.93555H6.93555V12H5.43555V6.93555H0V5.43555H5.43555V0H6.93555V5.43555Z"/></svg>
-      </button>
+    <!-- Griglia dei token in gioco: scroll verticale in landscape, orizzontale in portrait -->
+    <div id="grid" class="grid">
+      <div id="grid-scroll" class="grid-scroll"></div>
     </div>
 
-    <!-- Area principale: carta selezionata + tray delle istanze -->
-    <div class="board-main">
-      <div id="center-empty" class="center-empty">Aggiungi un token con il +</div>
-
-      <div id="center-card" class="center-card" hidden>
-        <img id="center-img" alt="">
-        <div id="center-name" class="center-name"></div>
-        <span id="center-count" class="center-count">0</span>
-        <input id="center-copy-label" class="center-copy-label" type="text" placeholder="Copia di…" autocomplete="off" hidden>
+    <!-- Tray delle istanze del token selezionato -->
+    <aside id="tray" class="tray" hidden>
+      <div id="tray-header-normal" class="tray-header">
+        <div class="tray-header-left">
+          <button id="btn-add-counter" class="pill"><span>+ Add counter</span></button>
+          <button id="btn-clear-counters" class="pill" hidden aria-label="Rimuovi segnalini"><span>− Remove</span></button>
+        </div>
+        <div class="tray-steppers">
+          <button id="btn-inst-plus" class="round" aria-label="Aggiungi un'istanza">
+            <svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true"><path fill="currentColor" d="M6.93555 5.43555H12V6.93555H6.93555V12H5.43555V6.93555H0V5.43555H5.43555V0H6.93555V5.43555Z"/></svg>
+          </button>
+          <button id="btn-inst-minus" class="round" aria-label="Rimuovi un'istanza">
+            <svg viewBox="0 0 12 2" width="12" height="2" aria-hidden="true"><path fill="currentColor" d="M12 1.5H0V0H12V1.5Z"/></svg>
+          </button>
+        </div>
       </div>
-
-      <aside id="tray" class="tray" hidden>
-        <div id="tray-header-normal" class="tray-header">
-          <div class="tray-header-left">
-            <button id="btn-add-counter" class="pill"><span>+ Add counter</span></button>
-            <button id="btn-clear-counters" class="pill" hidden aria-label="Rimuovi segnalini"><span>− Remove</span></button>
-          </div>
-          <div class="tray-steppers">
-            <button id="btn-inst-plus" class="round" aria-label="Aggiungi un'istanza">
-              <svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true"><path fill="currentColor" d="M6.93555 5.43555H12V6.93555H6.93555V12H5.43555V6.93555H0V5.43555H5.43555V0H6.93555V5.43555Z"/></svg>
-            </button>
-            <button id="btn-inst-minus" class="round" aria-label="Rimuovi un'istanza">
-              <svg viewBox="0 0 12 2" width="12" height="2" aria-hidden="true"><path fill="currentColor" d="M12 1.5H0V0H12V1.5Z"/></svg>
-            </button>
-          </div>
-        </div>
-        <div id="tray-header-select" class="tray-header" hidden>
-          <span class="select-label">Select one or more tokens</span>
-          <button id="btn-select-done" class="pill pill-light">Done</button>
-        </div>
-        <div id="tray-grid" class="tray-grid"></div>
-      </aside>
-    </div>
+      <div id="tray-header-select" class="tray-header" hidden>
+        <span class="select-label">Select one or more tokens</span>
+        <button id="btn-select-done" class="pill pill-light">Done</button>
+      </div>
+      <input id="copy-label" class="copy-label" type="text" placeholder="Copia di…" autocomplete="off" hidden>
+      <div id="tray-grid" class="tray-grid"></div>
+    </aside>
   </div>
-
-  <!-- Riassunto: griglia di tutti i token in gioco (stappate = carta dritta,
-       tappate = carta girata di 90°), con i rispettivi contatori -->
-  <div id="summary" class="summary" hidden>
-    <div id="summary-grid" class="summary-grid"></div>
-    <p id="summary-empty" class="summary-empty" hidden>Nessun token in gioco.</p>
-  </div>
-
-  <!-- Portrait: maniglia sul bordo sinistro per aprire il drawer dei token in gioco -->
-  <button id="drawer-handle" class="drawer-handle" aria-label="Mostra i token in gioco" aria-expanded="false">
-    <span class="drawer-handle-grip"></span>
-  </button>
-  <!-- Portrait: scrim dietro al drawer aperto (tap per chiudere) -->
-  <div id="drawer-scrim" class="drawer-scrim" hidden></div>
 
   <!-- Scrim modalità selezione: il tray resta in chiaro sopra -->
   <div id="board-scrim" class="board-scrim" hidden></div>

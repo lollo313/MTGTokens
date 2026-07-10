@@ -456,7 +456,7 @@ summary {
     overflow: hidden;
 }
 
-/* cluster in alto a destra: switch vista + menu */
+/* menu in alto a destra */
 .board-controls {
     position: absolute;
     top: 11px;
@@ -465,36 +465,6 @@ summary {
     display: flex;
     align-items: center;
     gap: 12px;
-}
-
-/* switch vista: controllo segmentato (traccia chiara, attivo scuro) */
-.view-switch {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    height: 44px;
-    padding: 4px;
-    border-radius: 999px;
-    background: var(--text-inverted);
-    box-shadow: 0 2px 2px rgba(0, 0, 0, 0.4);
-}
-
-.view-switch-btn {
-    width: 36px;
-    height: 36px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 0;
-    border: none;
-    background: none;
-    color: var(--text);
-    border-radius: 999px;
-}
-
-.view-switch-btn.active {
-    background: var(--overlay);
-    color: var(--text-inverted);
 }
 
 .menu-btn {
@@ -532,113 +502,122 @@ summary {
 .board {
     height: 100%;
     display: flex;
-    gap: 17px;
+    gap: 8px;
 }
 
-/* --- colonna sinistra: pila di fasce titolo --- */
-.board-left {
-    position: relative;
-    width: clamp(200px, 26%, 244px);
-    flex-shrink: 0;
-    display: flex;
-    flex-direction: column;
-    padding: 0 0 0 24px;
-    /* sottile vetro sotto la colonna, come nel componente Figma (blur, no fondo) */
-    -webkit-backdrop-filter: blur(6px);
-    backdrop-filter: blur(6px);
-}
-
-.stack {
+/* --- griglia dei token in gioco ---
+   landscape: scroll verticale (colonne auto-fill); portrait: 2 righe con
+   scroll orizzontale (override nel media query). */
+#grid {
     flex: 1;
+    min-width: 0;
     min-height: 0;
     overflow-y: auto;
-    display: flex;
-    flex-direction: column;
-    gap: 0;
-    /* overflow-y:auto rende scroll container anche l'asse orizzontale:
-       2px di tolleranza laterale per non tagliare l'anello di selezione */
-    padding: 32px 2px 12px;
+    overflow-x: hidden;
+    padding: 32px 8px 12px 24px;
     scrollbar-width: none;
     overscroll-behavior: contain;
 }
 
-.stack::-webkit-scrollbar {
+#grid::-webkit-scrollbar {
     display: none;
 }
 
-/* Ogni riga è alta 38px (78 se selezionata) ma la carta al suo interno
-   NON viene tagliata: la riga successiva la copre, e l'ultima resta
-   visibile per intero sotto la propria fascia — effetto pila. */
-.play-card {
+.grid-scroll {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    align-content: start;
+}
+
+/* card: fronte dritto (stappate) + stessa carta girata di 90° dietro (tappate) */
+.grid-card {
     position: relative;
-    width: 100%;
-    height: 43px;
-    flex-shrink: 0;
+    aspect-ratio: 1;
     border: none;
     background: none;
     padding: 0;
-    overflow: visible;
-    /* eccezione al "solo transform/opacity": qui l'altezza della riga
-       è ciò che spinge le righe successive, ottenendo l'effetto di
-       traslazione della pila senza calcoli di posizione in JS */
-    transition: height 0.2s ease;
+    cursor: pointer;
 }
 
-.play-card.selected {
-    height: 75px;
-}
-
-.play-face {
+.grid-face,
+.grid-spine-inner {
     position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    aspect-ratio: var(--card-ratio);
-    border-radius: var(--radius-card);
     overflow: hidden;
-    background: var(--text-inverted);
-    box-shadow: var(--shadow-card);
-    color: var(--text);
-    transition: box-shadow 0.2s ease;
+    border-radius: var(--radius-mini);
+    background: rgba(139, 139, 139, 0.7);
 }
 
-/* niente bordo trasparente: con l'immagine incassata (inset:0) lascerebbe
-   scoperto il background chiaro sottostante, disegnando un anello bianco */
-.play-card.selected .play-face {
-    box-shadow: 0 0 0 2px var(--golden-orange), var(--shadow-card);
-}
-
-.play-face img {
+.grid-face img,
+.grid-spine-inner img {
     position: absolute;
     inset: 0;
     width: 100%;
     height: 100%;
     object-fit: cover;
-    object-position: top;
 }
 
-.play-face .play-name {
-    position: absolute;
-    top: 0;
+/* fronte (stappate): colonna sinistra, altezza piena */
+.grid-face {
     left: 0;
-    right: 0;
-    padding: 10px 16px;
-    font-size: 0.85rem;
-    font-weight: 500;
-    text-align: center;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    top: 0;
+    height: 100%;
+    aspect-ratio: var(--card-ratio);
+    z-index: 2;
+    box-shadow: 0 2px 2px rgba(0, 0, 0, 0.4);
+    transition: box-shadow 0.2s ease;
 }
 
-/* etichetta della copia: pillola scura sopra la fascia titolo della riga */
-.play-copy-label {
+/* card selezionata: anello dorato sul fronte */
+.grid-card.selected .grid-face {
+    box-shadow: 0 0 0 2px var(--golden-orange), 0 2px 2px rgba(0, 0, 0, 0.4);
+}
+
+.grid-card:not(.selected):not(:disabled):hover .grid-face {
+    box-shadow: 0 0 0 1px var(--hover-ring), 0 2px 2px rgba(0, 0, 0, 0.4);
+}
+
+/* carta girata (tappate): dietro, spunta a destra del fronte */
+.grid-spine {
     position: absolute;
-    top: 8px;
-    left: 50%;
-    transform: translateX(-50%);
+    left: 0;
+    bottom: 0;
+    width: 100%;
+    height: 71.5%;
     z-index: 1;
-    max-width: 68%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.grid-spine-inner {
+    position: relative;
+    width: 71.5%;
+    aspect-ratio: var(--card-ratio);
+    transform: rotate(90deg);
+    box-shadow: 0 2px 2px rgba(0, 0, 0, 0.4);
+}
+
+.grid-fallback {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 22px 6px;
+    font-size: 0.7rem;
+    color: var(--text);
+    text-align: center;
+    overflow: hidden;
+}
+
+/* etichetta della copia: pillola scura in basso a sinistra sul fronte */
+.grid-copy-label {
+    position: absolute;
+    left: 4px;
+    bottom: 8px;
+    z-index: 3;
+    max-width: 62%;
     padding: 2px 8px;
     border-radius: 999px;
     background: var(--overlay);
@@ -650,159 +629,72 @@ summary {
     text-overflow: ellipsis;
 }
 
-/* badge conteggio: pillola chiara attaccata al bordo destro della carta
-   (arrotondata solo a sinistra), testo scuro — come nel componente Figma */
-.play-badge {
+/* badge conteggio: pillola chiara, testo scuro 18px */
+.grid-count {
     position: absolute;
-    top: 12px;
-    right: 0;
-    z-index: 1;
+    z-index: 4;
     min-width: 15px;
-    padding: 2px 9px;
-    border-radius: 999px 0 0 999px;
+    padding: 6px;
     background: var(--text-inverted);
     color: var(--text);
-    font-size: 0.875rem;
-    line-height: 1.2;
-    text-align: center;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
-}
-
-/* "+" aggiungi token: pillola chiara con icona scura e ombra (Figma) */
-.add-btn {
-    position: absolute;
-    bottom: 16px;
-    /* centrato sullo stack: la colonna ha 24px di padding a sinistra */
-    left: 24px;
-    right: 0;
-    margin-inline: auto;
-    z-index: 2;
-    width: 80px;
-    height: 36px;
-    flex-shrink: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 999px;
-    border: none;
-    background: var(--text-inverted);
-    color: var(--text);
-    padding: 0;
-    box-shadow: 0 2px 2px rgba(0, 0, 0, 0.4);
-}
-
-.add-btn:not(:disabled):hover {
-    background: #ffffff;
-}
-
-.add-btn:not(:disabled):active {
-    transform: scale(0.9);
-    transition-duration: 0.1s;
-}
-
-/* --- area principale: carta selezionata + tray --- */
-.board-main {
-    flex: 1;
-    min-width: 0;
-    display: flex;
-    align-items: flex-start;
-    gap: 24px;
-    padding: 32px 0 12px;
-}
-
-.center-empty {
-    color: var(--text-inverted-soft);
-    font-size: 0.9rem;
-    text-align: center;
-    width: 100%;
-    align-self: center;
-}
-
-.center-card {
-    position: relative;
-    /* riempie tutta l'altezza disponibile in .board-main; la larghezza
-       segue dall'aspect-ratio invece di un'altezza fissa a 363px */
-    align-self: stretch;
-    aspect-ratio: var(--card-ratio);
-    flex-shrink: 0;
-    border-radius: var(--radius-card);
-    background: var(--text-inverted);
-    box-shadow: var(--shadow-card);
-    overflow: hidden;
-    transition: opacity 0.15s ease;
-}
-
-/* dissolvenza incrociata quando il token selezionato cambia */
-.center-card.fade-out {
-    opacity: 0;
-}
-
-.center-card img {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-}
-
-.center-name {
-    position: absolute;
-    top: 12px;
-    left: 0;
-    right: 0;
-    z-index: 1;
-    font-size: 1rem;
-    color: var(--text);
-    font-weight: 500;
-    text-align: center;
-    padding: 0 16px;
-}
-
-/* contatore: tab chiaro in alto a destra, flush, arrotondato solo in basso-sx */
-.center-count {
-    position: absolute;
-    top: 0;
-    right: 0;
-    z-index: 1;
-    min-width: 15px;
-    padding: 6px 9px;
-    border-radius: 0 0 0 16px;
-    background: var(--text-inverted);
-    color: var(--text);
-    font-size: 1.5rem;
+    font-size: 18px;
     line-height: 1;
     text-align: center;
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
 }
 
-/* campo di testo per etichettare la copia, sulla fascia di testo della carta.
-   Selettore discendente per battere la specificità di input[type="text"]. */
-.center-card .center-copy-label {
+/* stappate: angolo alto-sinistra del fronte */
+.grid-face .grid-count {
+    top: 0;
+    left: 0;
+    border-radius: 0 0 12px 0;
+}
+
+/* tappate: angolo alto-destra sulla striscia della carta girata */
+.grid-count-tap {
+    top: 0;
+    right: 0;
+    border-radius: 0 0 0 12px;
+}
+
+/* tessera "aggiungi token": box tratteggiato con footprint del fronte carta */
+.grid-add {
+    position: relative;
+    aspect-ratio: 1;
+    border: none;
+    background: none;
+    padding: 0;
+    cursor: pointer;
+}
+
+.grid-add-box {
     position: absolute;
-    z-index: 1;
-    left: 8%;
-    right: 8%;
-    bottom: 14%;
-    width: auto;
-    text-align: center;
-    background: var(--text-inverted);
-    color: var(--text);
-    border: 1px solid var(--golden-orange);
-    border-radius: var(--radius-field);
-    padding: 8px 12px;
-    font-size: 1rem;
+    left: 0;
+    top: 0;
+    height: 100%;
+    aspect-ratio: var(--card-ratio);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px dashed var(--border-soft);
+    border-radius: var(--radius-mini);
+    color: var(--text-inverted-soft);
+    transition: color 0.2s ease, border-color 0.2s ease;
 }
 
-.center-card .center-copy-label::placeholder {
-    color: var(--placeholder);
+.grid-add:not(:disabled):hover .grid-add-box {
+    color: var(--text-inverted);
+    border-color: var(--text-inverted);
 }
 
-/* --- tray: una mini-carta per istanza --- */
+/* --- tray: una mini-carta per istanza ---
+   Cassetto a destra ancorato in basso (a filo del viewport); top abbassato
+   per non intersecare il menu in alto a destra. */
 .tray {
-    margin-left: auto;
-    width: clamp(300px, 55%, 371px);
+    /* top | right | bottom | left */
+    margin: 64px 24px 0 0;
+    width: clamp(300px, 40%, 371px);
     align-self: stretch;
-    margin-right: 24px;
     min-height: 0;
     display: flex;
     flex-direction: column;
@@ -813,6 +705,22 @@ summary {
     -webkit-backdrop-filter: blur(4px);
     backdrop-filter: blur(4px);
     box-shadow: var(--shadow-tray);
+}
+
+/* etichetta copia: input compatto sopra la griglia del tray (solo per le copie) */
+.tray .copy-label {
+    flex-shrink: 0;
+    text-align: center;
+    background: var(--text-inverted);
+    color: var(--text);
+    border: 1px solid var(--golden-orange);
+    border-radius: var(--radius-field);
+    padding: 8px 12px;
+    font-size: 1rem;
+}
+
+.tray .copy-label::placeholder {
+    color: var(--placeholder);
 }
 
 /* in modalità selezione il tray sale sopra lo scrim */
@@ -935,7 +843,14 @@ summary {
     border-radius: var(--radius-mini);
     overflow: hidden;
     background: var(--text-inverted);
-    transition: box-shadow 0.2s ease;
+    transform: rotate(0deg);
+    /* la rotazione anima il passaggio stappata <-> tappata */
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+/* tappata: la carta ruota di 90° come una carta girata sul tavolo */
+.mini.tapped .mini-face {
+    transform: rotate(90deg);
 }
 
 .mini:not(:disabled):hover {
@@ -947,8 +862,7 @@ summary {
     transition-duration: 0.1s;
 }
 
-.mini:not(.selected):not(:disabled):hover .mini-face,
-.mini:not(.selected):not(:disabled):hover .mini-rot {
+.mini:not(.selected):not(:disabled):hover .mini-face {
     box-shadow: 0 0 0 1px var(--hover-ring);
 }
 
@@ -960,36 +874,23 @@ summary {
     object-fit: cover;
 }
 
-/* mini tappata: slot tratteggiato verticale, carta ruotata di 90° */
-.mini.tapped {
-    aspect-ratio: 139 / 194;
-    border-radius: var(--radius-slot);
-}
-
-.mini.tapped::before {
+/* slot tratteggiato: il "posto" della carta, sfuma quando è tappata */
+.mini::before {
     content: '';
     position: absolute;
     inset: 0;
     border: 1px dashed var(--text-inverted);
     border-radius: var(--radius-slot);
+    opacity: 0;
+    transition: opacity 0.2s ease;
 }
 
-.mini-rot {
-    position: absolute;
-    left: 50%;
-    top: 50%;
-    width: 98%;
-    aspect-ratio: var(--card-ratio);
-    transform: translate(-50%, -50%) rotate(90deg);
-    border-radius: var(--radius-mini);
-    overflow: hidden;
-    background: var(--text-inverted);
-    transition: box-shadow 0.2s ease;
+.mini.tapped::before {
+    opacity: 1;
 }
 
 /* selezione multipla: anello esterno, niente bordo che scopre lo sfondo chiaro */
-.mini.selected .mini-face,
-.mini.selected .mini-rot {
+.mini.selected .mini-face {
     box-shadow: 0 0 0 2px var(--golden-orange);
 }
 
@@ -1007,157 +908,12 @@ summary {
     white-space: nowrap;
 }
 
-.mini.tapped .mini-badge {
-    right: auto;
-    left: 50%;
-    transform: translateX(-50%);
-    bottom: -4px;
-}
-
 /* --- scrim di selezione (il tray resta sopra) --- */
 .board-scrim {
     position: absolute;
     inset: 0;
     z-index: 25;
     background: var(--overlay);
-}
-
-/* --- riassunto: griglia di tutti i token in gioco --- */
-.summary {
-    position: absolute;
-    inset: 0;
-    z-index: 20;
-    overflow-y: auto;
-    padding: calc(60px + env(safe-area-inset-top, 0px)) 24px 24px;
-    scrollbar-width: none;
-    overscroll-behavior: contain;
-}
-
-.summary::-webkit-scrollbar {
-    display: none;
-}
-
-/* la board (colonne di modifica) e la maniglia spariscono nel riassunto */
-#board-view.summary-active .board,
-#board-view.summary-active .drawer-handle {
-    display: none;
-}
-
-.summary-grid {
-    display: grid;
-    grid-template-columns: repeat(5, 1fr);
-    gap: clamp(12px, 2.5vw, 32px);
-    align-content: start;
-}
-
-.summary-empty {
-    color: var(--text-inverted-soft);
-    font-size: 0.95rem;
-    text-align: center;
-    margin-top: 22vh;
-}
-
-/* ogni carta: faccia dritta (stappate) + carta girata 90° dietro (tappate) */
-.summary-card {
-    position: relative;
-    aspect-ratio: 148.89 / 149;
-}
-
-.summary-face,
-.summary-spine-inner {
-    position: absolute;
-    overflow: hidden;
-    border-radius: var(--radius-mini);
-    background: rgba(139, 139, 139, 0.7);
-}
-
-.summary-face img,
-.summary-spine-inner img {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-}
-
-/* faccia dritta (stappate): colonna sinistra, altezza piena */
-.summary-face {
-    left: 0;
-    top: 0;
-    height: 100%;
-    aspect-ratio: var(--card-ratio);
-    z-index: 2;
-    box-shadow: 0 2px 2px rgba(0, 0, 0, 0.4);
-}
-
-/* wrap non ruotato: occupa la fascia bassa, dà il contesto per il badge tappate */
-.summary-spine {
-    position: absolute;
-    left: 0;
-    bottom: 0;
-    width: 100%;
-    height: 71.5%;
-    z-index: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-/* la carta "tappata": stessa carta ruotata di 90°, spunta a destra della faccia */
-.summary-spine-inner {
-    position: relative;
-    width: 71.5%;
-    aspect-ratio: var(--card-ratio);
-    transform: rotate(90deg);
-    box-shadow: 0 2px 2px rgba(0, 0, 0, 0.4);
-}
-
-.summary-fallback {
-    position: absolute;
-    inset: 0;
-    display: flex;
-    align-items: flex-start;
-    justify-content: center;
-    padding: 22px 6px;
-    font-size: 0.7rem;
-    color: var(--text);
-    text-align: center;
-    overflow: hidden;
-}
-
-/* badge conteggio: pillola chiara, testo scuro 18px */
-.summary-count {
-    position: absolute;
-    z-index: 3;
-    min-width: 15px;
-    padding: 6px;
-    background: var(--text-inverted);
-    color: var(--text);
-    font-size: 18px;
-    line-height: 1;
-    text-align: center;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
-}
-
-/* stappate: angolo alto-sinistra della faccia */
-.summary-face .summary-count {
-    top: 0;
-    left: 0;
-    border-radius: 0 0 12px 0;
-}
-
-/* tappate: angolo alto-destra sulla striscia della carta girata */
-.summary-count-tap {
-    top: 0;
-    right: 0;
-    border-radius: 0 0 0 12px;
-}
-
-/* in verticale la griglia è a 2 colonne */
-@media (orientation: portrait) {
-    .summary-grid {
-        grid-template-columns: repeat(2, 1fr);
-    }
 }
 
 /* --- editor segnalini forza/costituzione --- */
@@ -1472,134 +1228,32 @@ body.board-active {
     overscroll-behavior: none;
 }
 
-/* --- drawer dei token in gioco (solo portrait) ---
-   Maniglia e scrim vivono solo in portrait: display:none di base così in
-   landscape non compaiono mai, nemmeno se lo scrim venisse mostrato via JS. */
-.drawer-handle {
-    display: none;
-    position: fixed;
-    top: 40%;
-    left: 0;
-    transform: translateY(-50%);
-    z-index: 34;
-    width: 26px;
-    height: 72px;
-    padding: 0;
-    align-items: center;
-    justify-content: center;
-    border: none;
-    border-radius: 0 var(--radius-field) var(--radius-field) 0;
-    /* vetro chiaro sfumato con grip scuro, come nel componente Figma */
-    background: linear-gradient(to right, rgba(255, 255, 255, 0.2), var(--text-inverted));
-    -webkit-backdrop-filter: blur(4px);
-    backdrop-filter: blur(4px);
-    transition: opacity 0.2s ease, transform 0.2s ease;
-}
-
-.drawer-handle-grip {
-    width: 3px;
-    height: 36px;
-    border-radius: 999px;
-    background: var(--text);
-}
-
-.drawer-scrim {
-    display: none;
-    position: fixed;
-    inset: 0;
-    z-index: 35;
-    background: var(--overlay);
-}
-
 /* ============ LAYOUT PORTRAIT ============ */
 @media (orientation: portrait) {
-    .drawer-handle {
-        display: flex;
-    }
-
-    .drawer-scrim {
-        display: block;
-    }
-
-    /* la maniglia sparisce quando il drawer è aperto o durante la selezione */
-    #board-view.drawer-open .drawer-handle,
-    #board-view.selecting .drawer-handle {
-        opacity: 0;
-        pointer-events: none;
-    }
-
-    /* board in colonna: carta sopra, tray sotto; il drawer è fuori-flusso */
+    /* board in colonna: griglia sopra (scroll orizzontale), tray sotto */
     .board {
         flex-direction: column;
         gap: 0;
     }
 
-    /* --- board-left diventa un drawer che entra da sinistra ---
-       stesso "vetro" traslucido chiaro del tray di destra (--tray, blur 6px),
-       angoli arrotondati solo sul lato destro perché ancorato al bordo sinistro */
-    .board-left {
-        position: fixed;
-        top: 0;
-        bottom: 0;
-        left: 0;
-        z-index: 36;
-        width: clamp(240px, 72vw, 300px);
-        padding: calc(32px + env(safe-area-inset-top)) 24px max(12px, env(safe-area-inset-bottom));
-        background: var(--tray);
-        -webkit-backdrop-filter: blur(6px);
-        backdrop-filter: blur(6px);
-        border-radius: 0 var(--radius-slot) var(--radius-slot) 0;
-        transform: translateX(-100%);
-        transition: transform 0.25s ease;
+    /* griglia: 2 righe di card quadrate che scorrono in orizzontale */
+    #grid {
+        --gcard: clamp(128px, 40vw, 168px);
+        flex: none;
+        overflow-x: auto;
+        overflow-y: hidden;
+        padding: calc(52px + env(safe-area-inset-top, 2px)) 16px 0;
     }
 
-    #board-view.drawer-open .board-left {
-        transform: translateX(0);
+    .grid-scroll {
+        grid-template-columns: none;
+        grid-template-rows: repeat(2, var(--gcard));
+        grid-auto-flow: column;
+        grid-auto-columns: var(--gcard);
+        gap: 16px;
     }
 
-    /* nel drawer il vetro (blur) resta, ma senza fondo aggiuntivo: il bg tray
-       arriva dalla regola portrait di .board-left qui sotto */
-
-    /* il padding orizzontale grosso è sul drawer; qui resta la tolleranza per
-       l'anello di selezione: overflow-y:auto rende scroll container anche
-       l'asse X, quindi servono px su tutti i lati per non tagliare il bordo
-       arancio (in alto della prima riga selezionata compreso) */
-    .stack {
-        padding: 4px 2px 12px;
-    }
-
-    /* il "+" scorre nel flusso, in fondo al drawer sotto la lista */
-    .add-btn {
-        position: static;
-        margin: 12px auto 0;
-    }
-
-    /* --- area principale a tutta larghezza --- */
-    .board-main {
-        flex: 1;
-        min-height: 0;
-        flex-direction: column;
-        align-items: stretch;
-        gap: 0;
-        padding: 0;
-    }
-
-    .center-empty {
-        align-self: center;
-        margin: auto;
-    }
-
-    /* carta selezionata: centrata in alto, altezza guidata dallo spazio.
-       margin-top porta la carta sotto i controlli (switch + menu, ~55px) così
-       il contatore nell'angolo alto-destra non finisce coperto */
-    .center-card {
-        align-self: center;
-        height: clamp(220px, 42vh, 420px);
-        width: auto;
-        margin-top: calc(64px + env(safe-area-inset-top));
-    }
-
-    /* tray a tutta larghezza, ancorato in basso, angoli superiori arrotondati */
+    /* tray a tutta larghezza, sotto la griglia, ancorato in basso */
     .tray {
         width: auto;
         align-self: stretch;
@@ -1673,15 +1327,6 @@ body.board-active {
         align-items: center;
         justify-content: center;
         border-radius: 50%;
-    }
-}
-
-/* In landscape maniglia e scrim del drawer non esistono, anche se lo scrim
-   fosse stato mostrato via JS prima di ruotare il dispositivo. */
-@media (orientation: landscape) {
-    .drawer-handle,
-    .drawer-scrim {
-        display: none !important;
     }
 }
 

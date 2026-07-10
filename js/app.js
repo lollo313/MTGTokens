@@ -18,16 +18,8 @@ const els = {
   confirmClearNo: document.getElementById('confirm-clear-no'),
   // board
   boardView: document.getElementById('board-view'),
-  stack: document.getElementById('stack'),
-  btnAdd: document.getElementById('btn-add'),
-  drawerHandle: document.getElementById('drawer-handle'),
-  drawerScrim: document.getElementById('drawer-scrim'),
-  centerEmpty: document.getElementById('center-empty'),
-  centerCard: document.getElementById('center-card'),
-  centerImg: document.getElementById('center-img'),
-  centerName: document.getElementById('center-name'),
-  centerCount: document.getElementById('center-count'),
-  centerCopyLabel: document.getElementById('center-copy-label'),
+  grid: document.getElementById('grid'),
+  gridScroll: document.getElementById('grid-scroll'),
   // tray
   tray: document.getElementById('tray'),
   trayGrid: document.getElementById('tray-grid'),
@@ -38,6 +30,7 @@ const els = {
   btnInstPlus: document.getElementById('btn-inst-plus'),
   btnInstMinus: document.getElementById('btn-inst-minus'),
   btnSelectDone: document.getElementById('btn-select-done'),
+  copyLabel: document.getElementById('copy-label'),
   boardScrim: document.getElementById('board-scrim'),
   // editor segnalini
   counterEditor: document.getElementById('counter-editor'),
@@ -54,12 +47,6 @@ const els = {
   searchClose: document.getElementById('search-close'),
   searchModeDeck: document.getElementById('search-mode-deck'),
   searchModeScryfall: document.getElementById('search-mode-scryfall'),
-  // switch vista + riassunto
-  viewEdit: document.getElementById('view-edit'),
-  viewSummary: document.getElementById('view-summary'),
-  summary: document.getElementById('summary'),
-  summaryGrid: document.getElementById('summary-grid'),
-  summaryEmpty: document.getElementById('summary-empty'),
   // menu
   btnMenu: document.getElementById('btn-menu'),
   menuSheet: document.getElementById('menu-sheet'),
@@ -95,8 +82,7 @@ function crossfade(el, timerKey, newId, lastId, apply) {
 }
 crossfade.timers = {};
 
-let lastCenterTokenId; // undefined finché non c'è stato un primo render
-let lastTrayTokenId;
+let lastTrayTokenId; // undefined finché non c'è stato un primo render del tray
 
 // id di una copia appena creata da mettere a fuoco per l'etichetta
 let pendingFocusCopy = null;
@@ -214,7 +200,6 @@ function enterBoard(tokens) {
   els.boardView.hidden = false;
   selectedId = null;
   renderBoard();
-  setView('edit');
 }
 
 function tokenById(id) { return allTokens.find(t => t.id === id); }
@@ -227,96 +212,115 @@ function inPlayTokens() {
 function fmtMod(n) { return (n >= 0 ? '+' : '') + n; }
 
 function renderBoard() {
-  renderStack();
-  renderCenter();
+  renderGrid();
   renderTray();
 }
 
-// --- colonna sinistra: pila delle fasce titolo ---
-function renderStack() {
-  els.stack.innerHTML = '';
+// --- griglia dei token in gioco ---
+// Per ogni token una card (fronte = istanze stappate, carta girata dietro =
+// tappate, con i due conteggi); in coda la tessera "+" per aggiungere token.
+// Toccare una card la seleziona e ne popola il tray.
+function renderGrid() {
   const playing = inPlayTokens();
   if (!playing.some(t => t.id === selectedId)) {
     selectedId = playing.length ? playing[0].id : null;
   }
-  playing.forEach(t => {
-    const card = document.createElement('button');
-    card.className = 'play-card' + (t.id === selectedId ? ' selected' : '');
-    card.setAttribute('aria-label', t.name);
+  els.gridScroll.innerHTML = '';
+  playing.forEach(t => els.gridScroll.appendChild(buildGridCard(t)));
 
-    const face = document.createElement('span');
-    face.className = 'play-face';
-    if (t.image) {
-      // il nome è già stampato sulla fascia titolo della carta
-      const img = document.createElement('img');
-      img.loading = 'lazy'; img.alt = ''; img.src = t.image;
-      face.appendChild(img);
-    } else {
-      const name = document.createElement('span');
-      name.className = 'play-name';
-      name.textContent = t.name;
-      face.appendChild(name);
-    }
-    card.appendChild(face);
-
-    // etichetta della copia sopra la fascia titolo, per distinguere le copie
-    if (isCopyEntry(t)) {
-      const cap = document.createElement('span');
-      cap.className = 'play-copy-label';
-      cap.textContent = t.label || 'Copia';
-      card.appendChild(cap);
-      card.setAttribute('aria-label', t.label ? `Copia: ${t.label}` : 'Copia senza nome');
-    }
-
-    const badge = document.createElement('span');
-    badge.className = 'play-badge';
-    badge.textContent = Storage.total(t.id);
-    card.appendChild(badge);
-
-    card.addEventListener('click', () => {
-      if (selectMode) return; // durante la selezione la pila è sotto lo scrim
-      selectedId = t.id;
-      closeDrawer(); // in portrait: scelto il token, torna alla board
-      renderBoard();
-    });
-    els.stack.appendChild(card);
-  });
+  const add = document.createElement('button');
+  add.className = 'grid-add';
+  add.dataset.add = '1';
+  add.setAttribute('aria-label', 'Aggiungi token');
+  add.innerHTML = '<span class="grid-add-box"><svg viewBox="0 0 12 12" width="20" height="20" aria-hidden="true"><path fill="currentColor" d="M6.93555 5.43555H12V6.93555H6.93555V12H5.43555V6.93555H0V5.43555H5.43555V0H6.93555V5.43555Z"/></svg></span>';
+  els.gridScroll.appendChild(add);
 }
 
-// --- carta selezionata al centro ---
-function renderCenter() {
-  const t = selectedId ? tokenById(selectedId) : null;
-  const newId = t ? t.id : null;
+function buildGridCard(t) {
+  const instances = Storage.getInstances(t.id);
+  const tapped = instances.filter(i => i.tapped).length;
+  const untapped = instances.length - tapped;
 
-  const apply = () => {
-    if (!t) {
-      els.centerCard.hidden = true;
-      els.centerEmpty.hidden = false;
-    } else {
-      els.centerEmpty.hidden = true;
-      els.centerCard.hidden = false;
-      els.centerName.textContent = t.name;
-      els.centerName.hidden = Boolean(t.image); // il nome è già stampato sulla carta
-      els.centerCount.textContent = Storage.total(t.id);
-      if (t.image) { els.centerImg.src = t.image; els.centerImg.style.display = ''; }
-      else { els.centerImg.style.display = 'none'; }
+  const card = document.createElement('button');
+  card.className = 'grid-card' + (t.id === selectedId ? ' selected' : '');
+  card.dataset.id = t.id;
+  card.setAttribute('aria-label', isCopyEntry(t)
+    ? (t.label ? `Copia: ${t.label}` : 'Copia senza nome')
+    : t.name);
 
-      const copy = isCopyEntry(t);
-      els.centerCopyLabel.hidden = !copy;
-      // non sovrascrivere mentre l'utente sta digitando
-      if (copy && document.activeElement !== els.centerCopyLabel) {
-        els.centerCopyLabel.value = t.label || '';
-      }
-      if (copy && pendingFocusCopy === t.id) {
-        pendingFocusCopy = null;
-        els.centerCopyLabel.focus();
-      }
-    }
-    lastCenterTokenId = newId;
-  };
+  // carta girata (tappate), dietro a destra
+  const spine = document.createElement('span');
+  spine.className = 'grid-spine';
+  const spineInner = document.createElement('span');
+  spineInner.className = 'grid-spine-inner';
+  if (t.image) {
+    const si = document.createElement('img');
+    si.loading = 'lazy'; si.alt = ''; si.src = t.image;
+    spineInner.appendChild(si);
+  }
+  spine.appendChild(spineInner);
+  const tapCount = document.createElement('span');
+  tapCount.className = 'grid-count grid-count-tap';
+  tapCount.textContent = tapped;
+  spine.appendChild(tapCount);
+  card.appendChild(spine);
 
-  crossfade(els.centerCard, 'center', newId, lastCenterTokenId, apply);
+  // fronte (stappate), davanti a sinistra
+  const face = document.createElement('span');
+  face.className = 'grid-face';
+  if (t.image) {
+    const fi = document.createElement('img');
+    fi.loading = 'lazy'; fi.alt = ''; fi.src = t.image;
+    face.appendChild(fi);
+  } else {
+    const fb = document.createElement('span');
+    fb.className = 'grid-fallback';
+    fb.textContent = t.name;
+    face.appendChild(fb);
+  }
+  const upCount = document.createElement('span');
+  upCount.className = 'grid-count';
+  upCount.textContent = untapped;
+  face.appendChild(upCount);
+  card.appendChild(face);
+
+  // etichetta della copia (modificabile dal tray)
+  if (isCopyEntry(t)) {
+    const cap = document.createElement('span');
+    cap.className = 'grid-copy-label';
+    cap.textContent = t.label || 'Copia';
+    card.appendChild(cap);
+  }
+
+  return card;
 }
+
+// aggiorna i conteggi stappate/tappate di una card senza ricostruire la griglia
+// (usato dopo un tap, che non fa rebuild per far animare la rotazione)
+function updateGridCounts(id) {
+  const card = els.gridScroll.querySelector('.grid-card[data-id="' + id + '"]');
+  if (!card) return;
+  const instances = Storage.getInstances(id);
+  const tapped = instances.filter(i => i.tapped).length;
+  const face = card.querySelector('.grid-face .grid-count');
+  const tap = card.querySelector('.grid-count-tap');
+  if (face) face.textContent = instances.length - tapped;
+  if (tap) tap.textContent = tapped;
+}
+
+// tocco sulla griglia: seleziona la card (o "+" per aggiungere un token)
+els.gridScroll.addEventListener('click', e => {
+  if (selectMode) return;
+  if (e.target.closest('.grid-add')) { openSearch(); return; }
+  const card = e.target.closest('.grid-card');
+  if (!card || card.dataset.id === selectedId) return;
+  // sposta l'evidenziazione in-place (niente rebuild → lo scroll non salta)
+  const prev = els.gridScroll.querySelector('.grid-card.selected');
+  if (prev) prev.classList.remove('selected');
+  card.classList.add('selected');
+  selectedId = card.dataset.id;
+  renderTray();
+});
 
 // --- tray: una mini-carta per istanza ---
 function renderTray() {
@@ -332,6 +336,17 @@ function renderTray() {
     els.trayHeaderSelect.hidden = !selectMode;
     els.btnClearCounters.hidden = Boolean(selectMode) || !instances.some(i => i.p || i.t);
 
+    // etichetta modificabile: solo per i token copia, non in selezione
+    const copy = isCopyEntry(t);
+    els.copyLabel.hidden = !copy || Boolean(selectMode);
+    if (copy && document.activeElement !== els.copyLabel) {
+      els.copyLabel.value = t.label || '';
+    }
+    if (copy && pendingFocusCopy === t.id) {
+      pendingFocusCopy = null;
+      els.copyLabel.focus();
+    }
+
     els.trayGrid.innerHTML = '';
     instances.forEach((inst, i) => {
       const mini = document.createElement('button');
@@ -344,7 +359,7 @@ function renderTray() {
         : `${t.name} stappato: tocca per tappare`);
 
       const face = document.createElement('span');
-      face.className = inst.tapped ? 'mini-rot' : 'mini-face';
+      face.className = 'mini-face';
       if (t.image) {
         const img = document.createElement('img');
         img.loading = 'lazy'; img.alt = ''; img.src = t.image;
@@ -387,8 +402,19 @@ els.trayGrid.addEventListener('click', e => {
     return;
   }
 
+  // tap/untap: aggiorna SOLO questa mini (niente rebuild del tray) così la
+  // rotazione della carta può animarsi con la transizione CSS.
   Storage.toggleTap(selectedId, i);
-  renderTray();
+  const inst = Storage.getInstances(selectedId)[i];
+  const t = tokenById(selectedId);
+  mini.classList.toggle('tapped', inst.tapped);
+  if (t) {
+    mini.setAttribute('aria-label', inst.tapped
+      ? `${t.name} tappato: tocca per stappare`
+      : `${t.name} stappato: tocca per tappare`);
+  }
+  // aggiorna i conteggi stappate/tappate sulla card della griglia
+  updateGridCounts(selectedId);
 });
 
 // --- modalità selezione multipla ---
@@ -572,7 +598,6 @@ function pickToken(t, { persistNew = false } = {}) {
     selectedId = entry.id;
   }
   closeSearch();
-  closeDrawer(); // aggiunto il token, torna alla board
   renderBoard();
 }
 
@@ -608,161 +633,35 @@ function scheduleScryfallSearch(value) {
   }, 450);
 }
 
-els.btnAdd.addEventListener('click', openSearch);
 els.searchInput.addEventListener('input', e => runSearch(e.target.value));
 els.searchModeDeck.addEventListener('click', () => setSearchMode('deck'));
 els.searchModeScryfall.addEventListener('click', () => setSearchMode('scryfall'));
 els.searchClose.addEventListener('click', closeSearch);
 
-// --- etichetta della copia (campo di testo sulla carta centrale) ---
-els.centerCopyLabel.addEventListener('input', () => {
+// --- etichetta della copia (input nel tray, solo per i token copia) ---
+els.copyLabel.addEventListener('input', () => {
   const t = selectedId ? tokenById(selectedId) : null;
   if (!isCopyEntry(t)) return;
-  t.label = els.centerCopyLabel.value;
+  t.label = els.copyLabel.value;
   Storage.saveTokens(allTokens);
-  // aggiorna la sola riga selezionata senza ricostruire (non perde il focus)
-  const cap = els.stack.querySelector('.play-card.selected .play-copy-label');
-  if (cap) cap.textContent = t.label || 'Copia';
-  const card = els.stack.querySelector('.play-card.selected');
-  if (card) card.setAttribute('aria-label', t.label ? `Copia: ${t.label}` : 'Copia senza nome');
+  // aggiorna la sola card selezionata senza ricostruire (non perde il focus)
+  const card = els.gridScroll.querySelector('.grid-card[data-id="' + t.id + '"]');
+  if (card) {
+    let cap = card.querySelector('.grid-copy-label');
+    if (!cap) {
+      cap = document.createElement('span');
+      cap.className = 'grid-copy-label';
+      card.appendChild(cap);
+    }
+    cap.textContent = t.label || 'Copia';
+    card.setAttribute('aria-label', t.label ? `Copia: ${t.label}` : 'Copia senza nome');
+  }
   // cerca l'immagine della carta copiata (con debounce)
   scheduleCopyImageFetch(t);
 });
-els.centerCopyLabel.addEventListener('keydown', e => {
-  if (e.key === 'Enter') els.centerCopyLabel.blur();
+els.copyLabel.addEventListener('keydown', e => {
+  if (e.key === 'Enter') els.copyLabel.blur();
 });
-
-// --- drawer dei token in gioco (solo portrait) ---
-// In portrait la pila (board-left) diventa un drawer che entra da sinistra,
-// aperto dalla maniglia sul bordo o con uno swipe. In landscape non esiste:
-// le funzioni restano innocue (rimuovono classi/attributi non presenti).
-const portraitMQ = matchMedia('(orientation: portrait)');
-function isPortrait() { return portraitMQ.matches; }
-
-function openDrawer() {
-  if (selectMode) return; // durante la selezione multipla il drawer non si apre
-  els.boardView.classList.add('drawer-open');
-  els.drawerScrim.hidden = false;
-  els.drawerHandle.setAttribute('aria-expanded', 'true');
-}
-
-function closeDrawer() {
-  els.boardView.classList.remove('drawer-open');
-  els.drawerScrim.hidden = true;
-  els.drawerHandle.setAttribute('aria-expanded', 'false');
-}
-
-function toggleDrawer() {
-  if (els.boardView.classList.contains('drawer-open')) closeDrawer();
-  else openDrawer();
-}
-
-els.drawerHandle.addEventListener('click', toggleDrawer);
-els.drawerScrim.addEventListener('click', closeDrawer);
-// ruotando il dispositivo il drawer perde senso: reset dello stato
-portraitMQ.addEventListener('change', closeDrawer);
-
-// swipe: apri trascinando dal bordo sinistro, chiudi trascinando verso sinistra.
-// Listener passivi (niente preventDefault): lo scroll verticale della pila resta intatto.
-(function drawerSwipe() {
-  let sx = 0, sy = 0, tracking = false, fromEdge = false;
-  const THRESH = 45;
-  window.addEventListener('touchstart', e => {
-    tracking = false;
-    if (!isPortrait() || selectMode) return;
-    // un overlay superiore (ricerca, editor, menu) ha la precedenza
-    if (!els.searchOverlay.hidden || !els.counterEditor.hidden || !els.menuSheet.hidden) return;
-    const t = e.touches[0];
-    sx = t.clientX; sy = t.clientY;
-    fromEdge = sx <= 24;
-    // chiudi da qualunque punto se aperto; apri solo partendo dal bordo
-    tracking = els.boardView.classList.contains('drawer-open') || fromEdge;
-  }, { passive: true });
-  window.addEventListener('touchend', e => {
-    if (!tracking) return;
-    tracking = false;
-    const t = e.changedTouches[0];
-    const dx = t.clientX - sx, dy = t.clientY - sy;
-    if (Math.abs(dx) < THRESH || Math.abs(dx) <= Math.abs(dy)) return; // dev'essere orizzontale
-    const open = els.boardView.classList.contains('drawer-open');
-    if (open && dx < 0) closeDrawer();
-    else if (!open && fromEdge && dx > 0) openDrawer();
-  }, { passive: true });
-})();
-
-// --- switch vista: modifica <-> riassunto ---
-function summaryActive() {
-  return els.boardView.classList.contains('summary-active');
-}
-
-function setView(view) {
-  const summary = view === 'summary';
-  els.boardView.classList.toggle('summary-active', summary);
-  els.viewEdit.classList.toggle('active', !summary);
-  els.viewSummary.classList.toggle('active', summary);
-  els.viewEdit.setAttribute('aria-pressed', String(!summary));
-  els.viewSummary.setAttribute('aria-pressed', String(summary));
-  els.summary.hidden = !summary;
-  if (summary) { closeDrawer(); renderSummary(); }
-}
-
-// Griglia riassuntiva: per ogni token in gioco, la carta dritta (stappate)
-// con affianco la stessa carta girata di 90° (tappate), ciascuna col conteggio.
-function renderSummary() {
-  const playing = inPlayTokens();
-  els.summaryGrid.innerHTML = '';
-  els.summaryEmpty.hidden = playing.length > 0;
-
-  playing.forEach(t => {
-    const instances = Storage.getInstances(t.id);
-    const tapped = instances.filter(i => i.tapped).length;
-    const untapped = instances.length - tapped;
-
-    const card = document.createElement('div');
-    card.className = 'summary-card';
-
-    // carta girata (tappate), dietro a destra
-    const spine = document.createElement('span');
-    spine.className = 'summary-spine';
-    const spineInner = document.createElement('span');
-    spineInner.className = 'summary-spine-inner';
-    if (t.image) {
-      const si = document.createElement('img');
-      si.loading = 'lazy'; si.alt = ''; si.src = t.image;
-      spineInner.appendChild(si);
-    }
-    spine.appendChild(spineInner);
-    const tapCount = document.createElement('span');
-    tapCount.className = 'summary-count summary-count-tap';
-    tapCount.textContent = tapped;
-    spine.appendChild(tapCount);
-    card.appendChild(spine);
-
-    // carta dritta (stappate), davanti a sinistra
-    const face = document.createElement('span');
-    face.className = 'summary-face';
-    if (t.image) {
-      const fi = document.createElement('img');
-      fi.loading = 'lazy'; fi.alt = t.name; fi.src = t.image;
-      face.appendChild(fi);
-    } else {
-      const fb = document.createElement('span');
-      fb.className = 'summary-fallback';
-      fb.textContent = t.name;
-      face.appendChild(fb);
-    }
-    const upCount = document.createElement('span');
-    upCount.className = 'summary-count';
-    upCount.textContent = untapped;
-    face.appendChild(upCount);
-    card.appendChild(face);
-
-    els.summaryGrid.appendChild(card);
-  });
-}
-
-els.viewEdit.addEventListener('click', () => setView('edit'));
-els.viewSummary.addEventListener('click', () => setView('summary'));
 
 // --- menu ---
 els.btnMenu.addEventListener('click', () => { els.menuSheet.hidden = false; });
@@ -776,13 +675,11 @@ els.menuNewGame.addEventListener('click', () => {
   selectedId = null;
   if (selectMode) exitSelectMode();
   else renderBoard();
-  if (summaryActive()) renderSummary();
 });
 els.menuChangeDeck.addEventListener('click', () => {
   Storage.clearDeck();
   els.menuSheet.hidden = true;
   if (selectMode) exitSelectMode();
-  closeDrawer();
   document.body.classList.remove('board-active');
   els.boardView.hidden = true;
   els.deckTitle.value = '';
